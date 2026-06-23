@@ -49,7 +49,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(
     @Req() req: { user: { email: string; firstName: string; lastName: string; picture?: string; accessToken?: string } },
-    @Res({ passthrough: true }) res: Response
+    @Res() res: Response
   ) {
     const { access_token, user: userData } = await this.authService.googleLogin(req);
 
@@ -60,6 +60,7 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24,
     });
 
-    return { message: 'Google login successful', user: userData };
+    const userBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
+    res.redirect(`http://localhost:3000/login?googleUser=${userBase64}`);
   }
 }
