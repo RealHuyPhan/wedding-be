@@ -102,14 +102,15 @@ File đóng vai trò khai báo Module.
 ### 4.4. `src/user/user.service.ts`
 Chứa toàn bộ logic nghiệp vụ (Business logic) liên quan đến CRUD người dùng.
 - Inject `Repository<User>` của TypeORM.
-- Chứa các hàm: `findAll`, `findOne`, `create`, `update`, `remove`.
+- Chứa các hàm: `findAll`, `findOne`, `create`, `update`, `remove`. **Đặc biệt, ở hàm `findAll`, hệ thống sẽ tự động map qua danh sách và dùng Object Destructuring để bóc tách, loại bỏ trường `password` trước khi trả kết quả về, tránh lộ lọt dữ liệu nhạy cảm.**
 - Cung cấp thêm hàm `findByEmail` để phục vụ việc xác thực mật khẩu lúc đăng nhập.
 - Hàm `createGoogleUser` để tự tạo tự động một user mới nếu họ đăng nhập lần đầu bằng tài khoản Google.
 
 ### 4.5. `src/user/user.controller.ts`
 Định nghĩa các RESTful API endpoints (như `GET /user`, `POST /user`, `PATCH /user/:id`).
 - Lấy request body (thông qua `@Body()`), param (`@Param()`) và truyền vào `UserService` xử lý.
-- Có cấu hình phân quyền thông qua Guards: Bọc endpoint bằng `@UseGuards(AuthGuard('jwt'), RolesGuard)` và `@Roles('admin')`. Điều này quy định: API này bắt buộc phải có token đăng nhập hợp lệ (JWT) và user gọi api phải có vai trò (role) là `admin`.
+- Có cấu hình phân quyền thông qua Guards: Bọc endpoint bằng `@UseGuards(AuthGuard('jwt'), RolesGuard)` và phân cấp quyền `@Roles('admin')`.
+- **Logic chặn cập nhật**: Tại API `PATCH /user/:id`, Controller sẽ trích xuất thông tin người gọi từ Token (`@Request() req`) và tự động kiểm tra. Nếu bạn KHÔNG phải là `admin` và bạn lại đang cố sửa ID của một người khác -> Hệ thống sẽ ném lỗi `403 Forbidden` chặn đứng ngay lập tức. User thông thường chỉ được sửa profile của chính mình.
 
 ---
 

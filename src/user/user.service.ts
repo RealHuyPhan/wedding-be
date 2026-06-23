@@ -24,8 +24,13 @@ export class UserService {
     return savedUser;
   }
 
-  findAll() {
-    return `This action returns all user`;
+  async findAll() {
+    const users = await this.userRepository.find();
+    return users.map(user => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...result } = user;
+      return result;
+    });
   }
 
   async findByEmail(email: string): Promise<User | null> {

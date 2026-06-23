@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, Request, ForbiddenException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -19,14 +19,14 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin', 'user')
+  @Roles('admin')
   @Get()
   findAll() {
     return this.userService.findAll();
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin', 'user')
+  @Roles('admin')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
@@ -35,7 +35,14 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin', 'user')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: { user: { sub: string, role: string } }) {
+    const currentUser = req.user;
+
+    // Only current user or admin can update profile
+    if (currentUser.role !== 'admin' && currentUser.sub !== id) {
+      throw new ForbiddenException('You are not allowed to update other users');
+    }
+
     return this.userService.update(id, updateUserDto);
   }
 
