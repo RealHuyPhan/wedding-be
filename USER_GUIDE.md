@@ -274,17 +274,38 @@ const axiosInstance = axios.create({
 
 Để tránh hiện tượng Full Table Scan làm sập cơ sở dữ liệu khi lượng dữ liệu lớn, dự án áp dụng các chuẩn tìm kiếm như sau:
 
-### 7.1. Tìm kiếm đơn giản (Ví dụ: Category)
-Được áp dụng cho các bảng có lượng dữ liệu nhỏ (vài chục đến vài trăm dòng).
-- **Endpoint:** `GET /api/category?name=hoa`
-- **Logic:** Sử dụng hàm `ILike('%...%')` có sẵn của TypeORM để tìm kiếm không phân biệt chữ hoa/thường.
+### 7.1. Tìm kiếm & Phân trang đa trường (Ví dụ: Category)
+Được áp dụng cho các API lấy danh sách thông thường. Tham số `search` được cấu hình để quét qua nhiều trường (như `name` và `description`).
+- **Endpoint:** `GET /api/category?page=0&size=10&search=hoa`
+- **Logic:** 
+  - Khởi tạo `QueryBuilder`.
+  - Nếu có `search`, dùng `ILIKE` quét qua `name` hoặc `description`.
+  - Truyền `QueryBuilder` vào hàm tiện ích `paginate()` để tự động sinh ra kết quả phân trang chuẩn.
 
-### 7.2. Phân trang & Tìm kiếm phức tạp (Ví dụ: User)
-Được áp dụng cho các bảng có khả năng sinh ra hàng triệu bản ghi.
+**Code chi tiết (Trích đoạn `CategoryService`):**
+```typescript
+  async findAll(pageOptionsDto: PageOptionsDto) {
+    const { page = 0, size = 10, search } = pageOptionsDto;
+    const queryBuilder = this.categoryRepository.createQueryBuilder('category');
+
+    if (search) {
+      queryBuilder.where(
+        '(category.name ILIKE :search or category.description ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    // Tự động tính toán tổng số phần tử và số trang
+    const paginatedResult = await paginate(queryBuilder, page, size);
+    return paginatedResult;
+  }
+```
+
+### 7.2. Phân trang & Xử lý bảo mật (Ví dụ: User)
+Được áp dụng khi dữ liệu có chứa thông tin nhạy cảm (như `password`).
 - **Endpoint:** `GET /api/user?page=0&size=10&search=Huy`
 - **Logic:**
-  - Khống chế lượng dữ liệu trả về bằng `take` (limit) và `skip` (offset) thông qua `QueryBuilder`.
-  - Tính toán các metadata tự động (`totalElements`, `totalPages`, `first`, `last`).
+  - Tương tự như Category, nhưng sau khi lấy được `paginatedResult`, ta map qua mảng `items` để gỡ bỏ trường `password` trước khi trả về cho Client.
 - **Định dạng JSON trả về cố định:**
 
 ```json
