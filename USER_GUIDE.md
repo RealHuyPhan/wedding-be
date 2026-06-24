@@ -96,7 +96,7 @@ Chứa logic kiểm tra password và khởi tạo Token, trả về cả thông 
 ```
 
 ### 3.2. `src/auth/auth.controller.ts`
-Cung cấp API cho Frontend. Đây là nơi thao tác ghi Cookie diễn ra. Nhờ biến `@Res({ passthrough: true }) res: Response`, ta có thể can thiệp vào Header trả về của Express.
+Cung cấp API cho Frontend. Backend không can thiệp vào Cookie mà chỉ trả trực tiếp Token qua JSON Body để Frontend tự quản lý.
 
 **Code chi tiết (Trích đoạn hàm login):**
 ```typescript
