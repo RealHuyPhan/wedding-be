@@ -57,6 +57,17 @@ export class AuthController {
     };
   }
 
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+    return { message: 'Logged out successfully' };
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleAuth() {
