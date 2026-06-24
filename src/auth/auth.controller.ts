@@ -11,16 +11,9 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() loginDto: LoginDto) {
     const validatedUser = await this.authService.validateUser(loginDto);
     const { access_token, user } = this.authService.login(validatedUser);
-
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    });
 
     return {
       message: 'Login successful',
@@ -35,15 +28,8 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() createUserDto: CreateUserDto, @Res({ passthrough: true }) res: Response) {
+  async register(@Body() createUserDto: CreateUserDto) {
     const { access_token, user } = await this.authService.register(createUserDto);
-
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24,
-    });
 
     return {
       message: 'Registration successful',
@@ -59,12 +45,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+  logout() {
     return { message: 'Logged out successfully' };
   }
 
@@ -82,14 +63,7 @@ export class AuthController {
   ) {
     const { access_token } = await this.authService.googleLogin(req);
 
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24,
-    });
-
-    res.redirect(`http://localhost:3000/auth/callback?status=success`);
+    res.redirect(`http://localhost:3000/auth/callback?status=success&token=${access_token}`);
   }
 
   @UseGuards(AuthGuard('jwt'))

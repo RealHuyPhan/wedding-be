@@ -8,13 +8,7 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(private configService: ConfigService) {
         super({
-            jwtFromRequest: ExtractJwt.fromExtractors([
-                (request: Request) => {
-                    const token: unknown = request?.cookies?.access_token;
-                    return typeof token === 'string' ? token : null;
-                },
-                // ExtractJwt.fromAuthHeaderAsBearerToken(), // Fallback cho phép dùng Postman (Gửi qua Bearer Token)
-            ]),
+            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             secretOrKey: configService.get<string>('JWT_SECRET') || 'default-secret-fallback',
         })
