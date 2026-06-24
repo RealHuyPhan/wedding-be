@@ -24,13 +24,39 @@ export class UserService {
     return savedUser;
   }
 
-  async findAll() {
-    const users = await this.userRepository.find();
-    return users.map(user => {
+  async findAll(page: number, size: number, search?: string) {
+    const queryBuilder = this.userRepository.createQueryBuilder('user');
+
+    if (search) {
+      queryBuilder.where(
+        '(user.fullName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    queryBuilder.skip(page * size).take(size);
+
+    const [users, totalElements] = await queryBuilder.getManyAndCount();
+
+    const items = users.map(user => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
       return result;
     });
+
+    const totalPages = Math.ceil(totalElements / size);
+
+    return {
+      items,
+      page: {
+        number: page,
+        size: size,
+        totalElements: totalElements,
+        totalPages: totalPages,
+        first: page === 0,
+        last: page >= totalPages - 1 || totalElements === 0,
+      }
+    };
   }
 
   async findByEmail(email: string): Promise<User | null> {

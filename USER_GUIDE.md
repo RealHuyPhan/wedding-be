@@ -31,10 +31,13 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // 1. Kích hoạt thư viện đọc/ghi Cookie
+  // 1. Thiết lập Global Prefix cho mọi API (thành /api/...)
+  app.setGlobalPrefix('api');
+
+  // 2. Kích hoạt thư viện đọc/ghi Cookie
   app.use(cookieParser());
   
-  // 2. Bật Global Pipe để validate DTO
+  // 3. Bật Global Pipe để validate DTO
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true
@@ -212,3 +215,38 @@ const axiosInstance = axios.create({
 });
 ```
 Lưu ý: Bạn không cần phải lấy token dán vào Header `Authorization: Bearer...` ở Frontend nữa. Trình duyệt sẽ tự động đính kèm Cookie `access_token` vào mọi Request. Backend (thông qua Passport-JWT) sẽ tự động lấy Cookie này ra và xác thực.
+
+---
+
+## 7. Quy chuẩn Phân trang & Tìm kiếm (Pagination & Search)
+
+Để tránh hiện tượng Full Table Scan làm sập cơ sở dữ liệu khi lượng dữ liệu lớn, dự án áp dụng các chuẩn tìm kiếm như sau:
+
+### 7.1. Tìm kiếm đơn giản (Ví dụ: Category)
+Được áp dụng cho các bảng có lượng dữ liệu nhỏ (vài chục đến vài trăm dòng).
+- Endpoint: `GET /api/category?name=hoa`
+- Logic: Sử dụng hàm `ILike('%...%')` có sẵn của TypeORM để tìm kiếm không phân biệt chữ hoa/thường.
+
+### 7.2. Phân trang & Tìm kiếm phức tạp (Ví dụ: User)
+Được áp dụng cho các bảng có khả năng sinh ra hàng triệu bản ghi.
+- Endpoint: `GET /api/user?page=0&size=10&search=Huy`
+- Logic:
+  - Khống chế lượng dữ liệu trả về bằng `take` (limit) và `skip` (offset) thông qua `QueryBuilder`.
+  - Tính toán các metadata tự động (`totalElements`, `totalPages`, `first`, `last`).
+- Định dạng JSON trả về cố định:
+```json
+{
+  "items": [
+    { "id": "...", "fullName": "..." }
+  ],
+  "page": {
+    "number": 0,
+    "size": 10,
+    "totalElements": 25,
+    "totalPages": 3,
+    "first": true,
+    "last": false
+  }
+}
+```
+- **Tối ưu hóa Database (PostgreSQL):** PostgreSQL được thiết lập kích hoạt extension `pg_trgm` và sử dụng chỉ mục loại `GIN Index` trên các trường thường xuyên bị tìm kiếm tương đối (ví dụ `fullName`) để đảm bảo tốc độ cực nhanh.
