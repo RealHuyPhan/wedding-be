@@ -13,6 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     const token: unknown = request?.cookies?.access_token;
                     return typeof token === 'string' ? token : null;
                 },
+                // ExtractJwt.fromAuthHeaderAsBearerToken(), // Fallback cho phép dùng Postman (Gửi qua Bearer Token)
             ]),
             ignoreExpiration: false,
             secretOrKey: configService.get<string>('JWT_SECRET') || 'default-secret-fallback',

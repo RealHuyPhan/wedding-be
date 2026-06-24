@@ -208,7 +208,7 @@ Với chức năng Đăng nhập bằng Google, luồng hoạt động có một
 3. Sau khi đồng ý, Google sẽ gọi ngược lại Backend qua endpoint `GET /auth/google/callback`.
 4. Tại endpoint callback này, Backend tạo User (hoặc tìm User cũ), sinh ra Token và gắn vào Cookie y hệt như đăng nhập thường.
 5. **ĐIỂM KHÁC BIỆT:** Vì đây là một luồng chuyển trang (Navigation), Backend không thể `return` chuỗi JSON thông thường được, mà phải điều hướng (Redirect) người dùng trở lại Frontend.
-6. Để Frontend biết được thông tin User, Backend sẽ chỉ đính kèm cờ báo hiệu thành công vào URL: `http://localhost:3000/login?status=success`. Frontend sau đó sẽ tự động gọi API `GET /api/auth/me` để lấy thông tin.
+6. Để Frontend biết được thông tin User, Backend sẽ chỉ đính kèm cờ báo hiệu thành công vào URL: `http://localhost:3000/auth/callback?status=success`. Frontend sau đó sẽ tự động gọi API `GET /api/auth/me` để lấy thông tin.
 
 **Code chi tiết tại Controller Backend:**
 ```typescript
@@ -226,7 +226,7 @@ Với chức năng Đăng nhập bằng Google, luồng hoạt động có một
     });
 
     // Redirect về Frontend kèm cờ báo thành công
-    res.redirect(`http://localhost:3000/login?status=success`);
+    res.redirect(`http://localhost:3000/auth/callback?status=success`);
   }
 
   // API để Frontend lấy thông tin sau khi Redirect thành công
@@ -239,15 +239,14 @@ Với chức năng Đăng nhập bằng Google, luồng hoạt động có một
 ```
 
 **Cách Frontend bắt thông tin (React/NextJS):**
-Frontend sử dụng `useEffect` để đọc thanh địa chỉ (URL). Nếu thấy tham số `status=success`, nó sẽ gọi API `GET /api/auth/me` để lấy dữ liệu. Vì có sẵn `withCredentials: true`, Cookie sẽ tự động được gửi đi.
+Frontend sử dụng `useEffect` để đọc thanh địa chỉ (URL) ở trang `/auth/callback`. Nếu thấy tham số `status=success`, nó sẽ gọi API `GET /api/auth/me` để lấy dữ liệu. Vì có sẵn `withCredentials: true`, Cookie sẽ tự động được gửi đi.
 ```typescript
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('status') === 'success') {
       axiosInstance.get('/auth/me').then((userData) => {
         login(userData); // Lưu vào Zustand Store
-        // Xóa URL cho sạch
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Điều hướng thẳng về Trang chủ / Admin
       });
     }
   }, []);

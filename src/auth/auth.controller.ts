@@ -89,7 +89,7 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24,
     });
 
-    res.redirect(`http://localhost:3000/login?status=success`);
+    res.redirect(`http://localhost:3000/auth/callback?status=success`);
   }
 
   @UseGuards(AuthGuard('jwt'))

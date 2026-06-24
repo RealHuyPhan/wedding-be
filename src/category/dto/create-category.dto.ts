@@ -11,6 +11,5 @@ export class CreateCategoryDto {
     description: string;
 
     @IsString()
-    @IsNotEmpty()
     image: string;
 }
