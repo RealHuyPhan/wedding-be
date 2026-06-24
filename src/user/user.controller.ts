@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, Request, ForbiddenException, Query } from '@nestjs/common';
+import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -21,14 +22,8 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   @Get()
-  findAll(
-    @Query('page') page: string = '0',
-    @Query('size') size: string = '10',
-    @Query('search') search?: string,
-  ) {
-    const pageNum = parseInt(page, 10);
-    const sizeNum = parseInt(size, 10);
-    return this.userService.findAll(pageNum, sizeNum, search);
+  findAll(@Query() pageOptionsDto: PageOptionsDto) {
+    return this.userService.findAll(pageOptionsDto);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)

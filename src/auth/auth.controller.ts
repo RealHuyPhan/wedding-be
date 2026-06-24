@@ -12,8 +12,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const user = await this.authService.validateUser(loginDto);
-    const { access_token, user: userData } = this.authService.login(user);
+    const validatedUser = await this.authService.validateUser(loginDto);
+    const { access_token, user } = this.authService.login(validatedUser);
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
@@ -22,12 +22,21 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     });
 
-    return { message: 'Login successful', user: userData };
+    return {
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.fullName
+      },
+      access_token
+    };
   }
 
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto, @Res({ passthrough: true }) res: Response) {
-    const { access_token, user: userData } = await this.authService.register(createUserDto);
+    const { access_token, user } = await this.authService.register(createUserDto);
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
@@ -36,7 +45,16 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24,
     });
 
-    return { message: 'Registration successful', user: userData };
+    return {
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.fullName
+      },
+      access_token
+    };
   }
 
   @Get('google')
@@ -51,7 +69,7 @@ export class AuthController {
     @Req() req: { user: { email: string; firstName: string; lastName: string; picture?: string; accessToken?: string } },
     @Res() res: Response
   ) {
-    const { access_token, user: userData } = await this.authService.googleLogin(req);
+    const { access_token } = await this.authService.googleLogin(req);
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
@@ -60,7 +78,12 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24,
     });
 
-    const userBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
-    res.redirect(`http://localhost:3000/login?googleUser=${userBase64}`);
+    res.redirect(`http://localhost:3000/login?status=success`);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('me')
+  getProfile(@Req() req: { user: { sub: string, email: string, role: string } }) {
+    return this.authService.getUserProfile(req.user.sub);
   }
 }

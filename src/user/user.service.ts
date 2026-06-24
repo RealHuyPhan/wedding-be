@@ -1,4 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { paginate } from '../common/utils/pagination.util';
+import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,7 +26,8 @@ export class UserService {
     return savedUser;
   }
 
-  async findAll(page: number, size: number, search?: string) {
+  async findAll(pageOptionsDto: PageOptionsDto) {
+    const { page = 0, size = 10, search } = pageOptionsDto;
     const queryBuilder = this.userRepository.createQueryBuilder('user');
 
     if (search) {
@@ -34,29 +37,15 @@ export class UserService {
       );
     }
 
-    queryBuilder.skip(page * size).take(size);
+    const paginatedResult = await paginate(queryBuilder, page, size);
 
-    const [users, totalElements] = await queryBuilder.getManyAndCount();
-
-    const items = users.map(user => {
+    paginatedResult.items = paginatedResult.items.map(user => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
-      return result;
+      return result as User;
     });
 
-    const totalPages = Math.ceil(totalElements / size);
-
-    return {
-      items,
-      page: {
-        number: page,
-        size: size,
-        totalElements: totalElements,
-        totalPages: totalPages,
-        first: page === 0,
-        last: page >= totalPages - 1 || totalElements === 0,
-      }
-    };
+    return paginatedResult;
   }
 
   async findByEmail(email: string): Promise<User | null> {

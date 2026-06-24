@@ -5,6 +5,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 
 @Controller('category')
 export class CategoryController {
@@ -18,8 +19,8 @@ export class CategoryController {
   }
 
   @Get()
-  findAll(@Query('name') name?: string) {
-    return this.categoryService.findAll(name);
+  findAll(@Query() pageOptionsDto: PageOptionsDto) {
+    return this.categoryService.findAll(pageOptionsDto);
   }
 
   @Get(':id')

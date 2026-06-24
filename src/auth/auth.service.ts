@@ -33,18 +33,16 @@ export class AuthService {
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.fullName || user.email?.split('@')[0] || 'User',
-      }
+      user,
     };
   }
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
-    return this.login(user);
+    return {
+      access_token: this.jwtService.sign({ email: user.email, sub: user.id, role: user.role }),
+      user,
+    };
   }
 
   async googleLogin(req: { user: { email: string; firstName: string; lastName: string; picture?: string; accessToken?: string } }) {
@@ -62,5 +60,16 @@ export class AuthService {
     }
 
     return this.login(user);
+  }
+
+  async getUserProfile(id: string) {
+    const user = await this.userService.findOne(id);
+    if (!user) throw new UnauthorizedException('User not found');
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.fullName
+    };
   }
 }

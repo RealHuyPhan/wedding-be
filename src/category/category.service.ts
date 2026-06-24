@@ -3,7 +3,9 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
-import { Repository, ILike } from 'typeorm';
+import { Repository, } from 'typeorm';
+import { PageOptionsDto } from 'src/common/dto/page-options.dto';
+import { paginate } from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class CategoryService {
@@ -18,10 +20,20 @@ export class CategoryService {
     return await this.categoryRepository.save(category);
   }
 
-  async findAll(name?: string) {
-    const whereCondition = name ? { name: ILike(`%${name}%`) } : {};
-    const categories = await this.categoryRepository.find({ where: whereCondition });
-    return categories;
+  async findAll(pageOptionsDto: PageOptionsDto) {
+    const { page = 0, size = 10, search } = pageOptionsDto;
+    const queryBuilder = this.categoryRepository.createQueryBuilder('category');
+
+    if (search) {
+      queryBuilder.where(
+        '(category.name ILIKE :search or category.description ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    const paginatedResult = await paginate(queryBuilder, page, size);
+
+    return paginatedResult;
   }
 
   async findOne(id: string) {
