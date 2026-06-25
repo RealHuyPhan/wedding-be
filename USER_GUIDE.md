@@ -186,6 +186,11 @@ Chứa các API endpoints.
   }
 ```
 
+### 4.3. Bảo mật Dữ liệu (Security Best Practices)
+- **Chống Re-hash Mật khẩu:** Logic băm mật khẩu `bcrypt` được gán vào `@BeforeInsert()` và `@BeforeUpdate()` ở Entity, nhưng kết hợp check `!this.password.startsWith('$2b$')`. Điều này chặn tuyệt đối lỗi TypeORM tự động băm lại mật khẩu đã băm mỗi khi User cập nhật thông tin (Tên, SĐT...).
+- **Chống rò rỉ dữ liệu:** Mọi API (`findAll`, `findOne`, `create`, `update`) đều bị ép chạy lệnh `delete (user as Partial<User>).password;` trước khi trả về JSON. Đảm bảo Hash của mật khẩu không bao giờ lọt ra ngoài mạng Internet.
+- **Ràng buộc Toàn vẹn (Data Integrity):** Hàm `create` và `update` sử dụng `ConflictException` (Lỗi 409) để cảnh báo Frontend nếu người dùng cố tình nhập Email hoặc Số điện thoại đã được đăng ký bởi người khác.
+
 <div style="page-break-after: always;"></div>
 
 ## 5. Luồng Đăng nhập Google (Google OAuth2 Flow)
@@ -341,3 +346,21 @@ Thay vì code lặp lại logic tính toán ở mọi Module (User, Category, Pr
     return await paginate(queryBuilder, page, size);
   }
 ```
+
+<div style="page-break-after: always;"></div>
+
+## 8. Kiến trúc Quan hệ Dữ liệu (TypeORM Relations)
+
+Dự án áp dụng các chuẩn thiết kế Database E-commerce nâng cao:
+
+### 8.1. Quan hệ Many-to-Many (Nhiều-Nhiều)
+Một thiệp cưới (Product) có thể thuộc nhiều phong cách thiết kế (Category) và ngược lại.
+Thay vì dùng 1 cột `category_id` cứng nhắc, hệ thống dùng `@ManyToMany` với `@JoinTable()`.
+- **Entity:** `product.categories` tự động mapping với `category.products` qua bảng trung gian.
+- **DTO:** API nhận mảng `categoryIds: string[]` (Mảng chứa các UUID).
+- **Service:** Backend chủ động gọi `categoryService.findByIds(categoryIds)` để kiểm tra sự tồn tại thật sự của các ID này trong DB trước khi lưu. Ngăn chặn triệt để lỗi tham chiếu chéo nếu Frontend truyền ID rác.
+
+### 8.2. Kiểu dữ liệu Tiền tệ chuẩn quốc tế
+Tất cả các trường liên quan đến tiền bạc (`price`, `discountPrice`) đều được đổi từ `number (float)` sang `decimal` để tránh rủi ro mất tiền do sai số làm tròn của máy tính.
+- `type: 'decimal', precision: 10, scale: 2` (Ví dụ: 99,999,999.00)
+- Thêm `default: 0` để tránh lỗi văng App lúc TypeORM đồng bộ cấu trúc bảng đối với các dòng bị thiếu dữ liệu.
