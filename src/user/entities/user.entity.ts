@@ -31,16 +31,9 @@ export class User {
     gender: string;
 
     @BeforeInsert()
-    async hashPassword() {
-        if (this.password) {
-            const saltRounds = 10;
-            this.password = await bcrypt.hash(this.password, saltRounds);
-        }
-    }
-
     @BeforeUpdate()
-    async updateHashPassword() {
-        if (this.password) {
+    async hashPassword() {
+        if (this.password && !this.password.startsWith('$2b$')) {
             const saltRounds = 10;
             this.password = await bcrypt.hash(this.password, saltRounds);
         }

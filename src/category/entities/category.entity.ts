@@ -9,10 +9,10 @@ export class Category {
     @Column()
     name: string;
 
-    @Column()
+    @Column({ nullable: true })
     description: string;
 
-    @Column()
+    @Column({ nullable: true })
     image: string;
 
     @ManyToMany(() => Product, (product) => product.categories)
