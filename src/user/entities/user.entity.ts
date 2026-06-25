@@ -16,7 +16,7 @@ export class User {
     phone: string;
 
     @Column({ nullable: true })
-    fullName: string;
+    name: string;
 
     @Column({ nullable: true })
     address: string;

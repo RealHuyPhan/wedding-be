@@ -19,7 +19,7 @@ export class CreateUserDto {
 
     @IsOptional()
     @IsString()
-    fullName?: string;
+    name?: string;
 
     @IsOptional()
     @IsString()

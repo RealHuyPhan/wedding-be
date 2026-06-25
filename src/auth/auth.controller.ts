@@ -21,7 +21,7 @@ export class AuthController {
         id: user.id,
         email: user.email,
         role: user.role,
-        name: user.fullName
+        name: user.name
       },
       access_token
     };
@@ -37,7 +37,7 @@ export class AuthController {
         id: user.id,
         email: user.email,
         role: user.role,
-        name: user.fullName
+        name: user.name
       },
       access_token
     };

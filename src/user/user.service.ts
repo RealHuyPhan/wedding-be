@@ -40,7 +40,7 @@ export class UserService {
 
     if (search) {
       queryBuilder.where(
-        '(user.fullName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
+        '(user.name ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
         { search: `%${search}%` }
       );
     }
@@ -60,8 +60,8 @@ export class UserService {
     return this.userRepository.findOne({ where: { email } });
   }
 
-  async createGoogleUser(email: string, fullName: string) {
-    const user = this.userRepository.create({ email, fullName });
+  async createGoogleUser(email: string, name: string) {
+    const user = this.userRepository.create({ email, name });
     const savedUser = await this.userRepository.save(user);
     delete (savedUser as Partial<User>).password;
     return savedUser;

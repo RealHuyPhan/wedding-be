@@ -51,12 +51,12 @@ export class AuthService {
     }
 
     const { email, firstName, lastName } = req.user;
-    const fullName = `${firstName} ${lastName}`.trim();
+    const name = `${firstName} ${lastName}`.trim();
 
     let user = await this.userService.findByEmail(email);
 
     if (!user) {
-      user = await this.userService.createGoogleUser(email, fullName);
+      user = await this.userService.createGoogleUser(email, name);
     }
 
     return this.login(user);
@@ -69,7 +69,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
-      name: user.fullName
+      name: user.name
     };
   }
 }
