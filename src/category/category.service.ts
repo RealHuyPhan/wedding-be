@@ -3,7 +3,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
-import { Repository, } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
 
@@ -42,6 +42,10 @@ export class CategoryService {
       throw new ConflictException("Category not found");
     }
     return category;
+  }
+
+  async findByIds(ids: string[]) {
+    return await this.categoryRepository.find({ where: { id: In(ids) } });
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
