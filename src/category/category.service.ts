@@ -16,6 +16,10 @@ export class CategoryService {
 
 
   async create(createCategoryDto: CreateCategoryDto) {
+    const existingCategory = await this.categoryRepository.findOne({ where: { value: createCategoryDto.value } });
+    if (existingCategory) {
+      throw new ConflictException("Category already exists");
+    }
     const category = this.categoryRepository.create(createCategoryDto);
     return await this.categoryRepository.save(category);
   }
@@ -26,7 +30,7 @@ export class CategoryService {
 
     if (search) {
       queryBuilder.where(
-        '(category.name ILIKE :search or category.description ILIKE :search)',
+        '(category.label ILIKE :search or category.value ILIKE :search or category.description ILIKE :search)',
         { search: `%${search}%` }
       );
     }

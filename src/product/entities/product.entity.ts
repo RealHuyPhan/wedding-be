@@ -7,7 +7,10 @@ export class Product {
     id: string;
 
     @Column()
-    name: string;
+    label: string;
+
+    @Column()
+    value: string;
 
     @Column()
     description: string;

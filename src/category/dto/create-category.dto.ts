@@ -4,7 +4,11 @@ export class CreateCategoryDto {
 
     @IsString()
     @IsNotEmpty()
-    name: string;
+    label: string;
+
+    @IsString()
+    @IsNotEmpty()
+    value: string;
 
     @IsString()
     @IsNotEmpty()

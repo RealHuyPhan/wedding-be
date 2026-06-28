@@ -3,7 +3,11 @@ import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-valid
 export class CreateProductDto {
     @IsString()
     @IsNotEmpty()
-    name: string;
+    label: string;
+
+    @IsString()
+    @IsNotEmpty()
+    value: string;
 
     @IsString()
     @IsNotEmpty()
