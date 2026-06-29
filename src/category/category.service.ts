@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +6,7 @@ import { Category } from './entities/category.entity';
 import { Repository, In } from 'typeorm';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
+import { toCamelCase } from 'src/common/utils/string.util';
 
 @Injectable()
 export class CategoryService {
@@ -16,12 +17,19 @@ export class CategoryService {
 
 
   async create(createCategoryDto: CreateCategoryDto) {
-    const existingCategory = await this.categoryRepository.findOne({ where: { value: createCategoryDto.value } });
+    // Tự động sinh mã 'value' từ 'label'
+    const value = toCamelCase(createCategoryDto.label);
+
+    // Kiểm tra xem danh mục này đã tồn tại chưa (dựa theo mã value)
+    const existingCategory = await this.categoryRepository.findOne({ where: { value } });
     if (existingCategory) {
       throw new ConflictException("Category already exists");
     }
-    const category = this.categoryRepository.create(createCategoryDto);
-    return await this.categoryRepository.save(category);
+
+    // Tạo và lưu danh mục vào cơ sở dữ liệu
+    const category = this.categoryRepository.create({ ...createCategoryDto, value });
+    const savedCategory = await this.categoryRepository.save(category);
+    return { message: "Category created successfully", id: savedCategory.id };
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
@@ -43,7 +51,7 @@ export class CategoryService {
   async findOne(id: string) {
     const category = await this.categoryRepository.findOne({ where: { id } });
     if (!category) {
-      throw new ConflictException("Category not found");
+      throw new NotFoundException("Category not found");
     }
     return category;
   }
@@ -53,21 +61,30 @@ export class CategoryService {
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    // Tìm danh mục cần cập nhật
     const existingCategory = await this.categoryRepository.findOne({ where: { id } })
     if (!existingCategory) {
-      throw new ConflictException("Category not found")
+      throw new NotFoundException("Category not found")
     }
+
+    // Nếu có sửa tên (label) thì phải cập nhật lại mã (value) tương ứng
+    if (updateCategoryDto.label) {
+      existingCategory.value = toCamelCase(updateCategoryDto.label);
+    }
+
+    // Nạp dữ liệu mới vào entity (những trường không gửi lên sẽ giữ nguyên giá trị cũ)
     Object.assign(existingCategory, updateCategoryDto);
-    const updateCategory = await this.categoryRepository.save(existingCategory);
-    return updateCategory
+
+    await this.categoryRepository.save(existingCategory);
+    return { message: "Category updated successfully" };
   }
 
   async remove(id: string) {
     const existingCategory = await this.categoryRepository.findOne({ where: { id } })
     if (!existingCategory) {
-      throw new ConflictException("Category not found")
+      throw new NotFoundException("Category not found")
     }
-    const deleteCategory = await this.categoryRepository.delete(id);
-    return deleteCategory
+    await this.categoryRepository.remove(existingCategory);
+    return { message: "Category deleted successfully" };
   }
 }

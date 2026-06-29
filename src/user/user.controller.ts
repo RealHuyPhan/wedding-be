@@ -44,6 +44,11 @@ export class UserController {
       throw new ForbiddenException('You are not allowed to update other users');
     }
 
+    // Prevent regular users from elevating their own privileges
+    if (currentUser.role !== 'admin' && updateUserDto.role) {
+      delete updateUserDto.role;
+    }
+
     return this.userService.update(id, updateUserDto);
   }
 

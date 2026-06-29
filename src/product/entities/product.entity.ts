@@ -41,7 +41,7 @@ export class Product {
     discountEndDate: Date;
 
     @ManyToMany(() => Category, (category) => category.products)
-    @JoinTable() // Chỉ cần JoinTable ở 1 bên (thường là bên Product)
+    @JoinTable({ name: 'product_categories' }) // Chỉ cần JoinTable ở 1 bên (thường là bên Product)
     categories: Category[];
 
 

@@ -30,8 +30,7 @@ export class UserService {
     const user = this.userRepository.create(createUserDto);
 
     const savedUser = await this.userRepository.save(user);
-    delete (savedUser as Partial<User>).password;
-    return savedUser;
+    return { message: "User created successfully", id: savedUser.id };
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
@@ -97,9 +96,8 @@ export class UserService {
     }
 
     Object.assign(existingUser, updateUserDto);
-    const updatedUser = await this.userRepository.save(existingUser);
-    delete (updatedUser as Partial<User>).password;
-    return updatedUser;
+    await this.userRepository.save(existingUser);
+    return { message: "User updated successfully" };
   }
 
   async remove(id: string) {
@@ -108,7 +106,7 @@ export class UserService {
       throw new NotFoundException("User not found")
     }
 
-    const deletedUser = await this.userRepository.delete(id);
-    return deletedUser;
+    await this.userRepository.remove(existingUser);
+    return { message: "User deleted successfully" };
   }
 }

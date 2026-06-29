@@ -29,6 +29,8 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
+    // Force role to 'user' to prevent privilege escalation via public API
+    createUserDto.role = 'user';
     const { access_token, user } = await this.authService.register(createUserDto);
 
     return {
