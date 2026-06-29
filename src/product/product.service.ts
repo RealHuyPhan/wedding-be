@@ -60,11 +60,15 @@ export class ProductService {
   }
 
   async findBestSeller() {
-    return this.productRepository.find({
+    const hotItem = await this.productRepository.find({
       where: { isHotItem: true },
       take: 4,
-      relations: { categories: true },
+      // relation muốn lấy thêm ra category thì true
+      relations: { categories: false },
     });
+    return {
+      data: hotItem,
+    }
   }
 
   async findOne(id: string) {
@@ -88,12 +92,12 @@ export class ProductService {
     }
 
     const { categoryIds, categoryId, ...productData } = updateProductDto;
-    
+
     // Nếu có cập nhật tên (label), tiến hành cập nhật lại mã (value) tương ứng
     if (productData.label) {
       existingProduct.value = toCamelCase(productData.label);
     }
-    
+
     // Đổ dữ liệu mới vào entity hiện tại (những trường không gửi lên sẽ được giữ nguyên)
     Object.assign(existingProduct, productData);
 
