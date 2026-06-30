@@ -42,7 +42,7 @@ export class ProductService {
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
-    const { page = 0, size = 10, search } = pageOptionsDto;
+    const { page = 0, size = 10, search, categoryId } = pageOptionsDto;
     const queryBuilder = this.productRepository.createQueryBuilder('product');
 
     queryBuilder.leftJoinAndSelect('product.categories', 'category');
@@ -52,6 +52,10 @@ export class ProductService {
         '(product.label ILIKE :search or product.value ILIKE :search or product.description ILIKE :search)',
         { search: `%${search}%` }
       );
+    }
+
+    if (categoryId) {
+      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
     }
 
     const paginatedResult = await paginate(queryBuilder, page, size);

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class PageOptionsDto {
   @IsOptional()
@@ -16,4 +16,8 @@ export class PageOptionsDto {
 
   @IsOptional()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 }
