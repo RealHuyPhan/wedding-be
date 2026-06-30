@@ -1,5 +1,6 @@
-import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, BeforeUpdate, Column, Entity, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import * as bcrypt from 'bcrypt';
+import { Cart } from "../../cart/entities/cart.entity";
 
 @Entity('users')
 export class User {
@@ -29,6 +30,9 @@ export class User {
 
     @Column({ nullable: true })
     gender: string;
+
+    @OneToOne(() => Cart, (cart) => cart.user)
+    cart: Cart;
 
     @BeforeInsert()
     @BeforeUpdate()

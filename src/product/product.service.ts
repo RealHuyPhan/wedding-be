@@ -7,7 +7,7 @@ import { Product } from './entities/product.entity';
 import { CategoryService } from 'src/category/category.service';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
-import { toCamelCase } from 'src/common/utils/string.util';
+import { toSlug } from 'src/common/utils/string.util';
 
 @Injectable()
 export class ProductService {
@@ -21,7 +21,7 @@ export class ProductService {
     const { categoryIds, categoryId, ...productData } = createProductDto;
 
     // Tự động sinh mã 'value' dựa trên 'label' do người dùng nhập
-    const value = toCamelCase(productData.label);
+    const value = toSlug(productData.label);
     const product = this.productRepository.create({ ...productData, value });
 
     // Hỗ trợ linh hoạt: form có thể gửi lên mảng (categoryIds) hoặc chuỗi đơn (categoryId)
@@ -95,7 +95,7 @@ export class ProductService {
 
     // Nếu có cập nhật tên (label), tiến hành cập nhật lại mã (value) tương ứng
     if (productData.label) {
-      existingProduct.value = toCamelCase(productData.label);
+      existingProduct.value = toSlug(productData.label);
     }
 
     // Đổ dữ liệu mới vào entity hiện tại (những trường không gửi lên sẽ được giữ nguyên)

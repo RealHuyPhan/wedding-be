@@ -1,5 +1,6 @@
 import { Category } from "src/category/entities/category.entity";
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { CartItem } from "src/cart/entities/cart-item.entity";
 
 @Entity('products')
 export class Product {
@@ -44,5 +45,7 @@ export class Product {
     @JoinTable({ name: 'product_categories' }) // Chỉ cần JoinTable ở 1 bên (thường là bên Product)
     categories: Category[];
 
+    @OneToMany(() => CartItem, (cartItem) => cartItem.product)
+    cartItems: CartItem[];
 
 }

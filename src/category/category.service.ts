@@ -6,7 +6,7 @@ import { Category } from './entities/category.entity';
 import { Repository, In } from 'typeorm';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
-import { toCamelCase } from 'src/common/utils/string.util';
+import { toSlug } from 'src/common/utils/string.util';
 
 @Injectable()
 export class CategoryService {
@@ -17,8 +17,8 @@ export class CategoryService {
 
 
   async create(createCategoryDto: CreateCategoryDto) {
-    // Tự động sinh mã 'value' từ 'label'
-    const value = toCamelCase(createCategoryDto.label);
+    // Tự động sinh mã 'value' từ 'label' (dùng Slug chuẩn SEO)
+    const value = toSlug(createCategoryDto.label);
 
     // Kiểm tra xem danh mục này đã tồn tại chưa (dựa theo mã value)
     const existingCategory = await this.categoryRepository.findOne({ where: { value } });
@@ -43,10 +43,21 @@ export class CategoryService {
       );
     }
 
+
     const paginatedResult = await paginate(queryBuilder, page, size);
 
     return paginatedResult;
   }
+
+  async categoryHomePage() {
+    const categoryList = await this.categoryRepository.find({
+      take: 8
+    })
+    return {
+      data: categoryList
+    }
+  }
+
 
   async findOne(id: string) {
     const category = await this.categoryRepository.findOne({ where: { id } });
@@ -67,9 +78,9 @@ export class CategoryService {
       throw new NotFoundException("Category not found")
     }
 
-    // Nếu có sửa tên (label) thì phải cập nhật lại mã (value) tương ứng
+    // Nếu có sửa tên (label) thì phải cập nhật lại mã (value) tương ứng bằng hàm Slug
     if (updateCategoryDto.label) {
-      existingCategory.value = toCamelCase(updateCategoryDto.label);
+      existingCategory.value = toSlug(updateCategoryDto.label);
     }
 
     // Nạp dữ liệu mới vào entity (những trường không gửi lên sẽ giữ nguyên giá trị cũ)
