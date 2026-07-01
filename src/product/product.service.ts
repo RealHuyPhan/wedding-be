@@ -49,7 +49,7 @@ export class ProductService {
 
     if (search) {
       queryBuilder.where(
-        '(product.label ILIKE :search or product.value ILIKE :search or product.description ILIKE :search)',
+        '(product.label ILIKE :search or product.value ILIKE :search or product.description ILIKE :search or product.tags ILIKE :search)',
         { search: `%${search}%` }
       );
     }

@@ -11,6 +11,10 @@ export class CreateProductDto {
     @IsNotEmpty()
     description: string;
 
+    @IsString()
+    @IsNotEmpty()
+    tags: string;
+
     @IsNumber()
     price: number;
 

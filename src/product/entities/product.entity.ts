@@ -16,12 +16,14 @@ export class Product {
     @Column()
     description: string;
 
+    @Column()
+    tags: string;
+
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     price: number;
 
     @Column({ nullable: true })
     image: string;
-
 
     @Column({ default: false })
     isHotItem: boolean;
