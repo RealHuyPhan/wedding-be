@@ -13,6 +13,8 @@ Tài liệu này hướng dẫn chi tiết luồng hoạt động hiện tại c
 6. [Quy chuẩn Phân trang & Tìm kiếm (Pagination & Search)](#6-quy-chuẩn-phân-trang--tìm-kiếm-pagination--search)
 7. [Kiến trúc Quan hệ Dữ liệu (TypeORM Relations)](#7-kiến-trúc-quan-hệ-dữ-liệu-typeorm-relations)
 8. [Xử lý Logic Nghiệp vụ (Business Logic) & Product Module](#8-xử-lý-logic-nghiệp-vụ-business-logic--product-module)
+9. [Chi tiết Category Module (Danh mục) & Auto-Slug](#9-chi-tiết-category-module-danh-mục--auto-slug)
+10. [Chi tiết Cart Module (Giỏ hàng) - User & Admin API](#10-chi-tiết-cart-module-giỏ-hàng---user--admin-api)
 
 ---
 
@@ -31,13 +33,14 @@ Hệ thống Backend sử dụng **Bearer Token (JWT)**, trả JWT thẳng vào 
 ## 2. Cấu hình hệ thống (AppModule & Main)
 
 ### Cấu hình `src/main.ts`
-Đây là nơi cấu hình hệ thống: bật Global Validation, prefix, và CORS.
+Đây là nơi cấu hình hệ thống: bật Global Validation, Swagger API Docs, prefix, và CORS.
 
 ```typescript
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -52,9 +55,19 @@ async function bootstrap() {
     forbidNonWhitelisted: true
   }));
 
+  // Setup Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Wedding API')
+    .setDescription('API documentation for the Wedding system')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
   // Kích hoạt CORS cho Client gọi vào
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:3000', // Cho phép Frontend truy cập
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -76,12 +89,7 @@ Chứa logic kiểm tra password và khởi tạo Token, trả về cả thông 
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.fullName || user.email?.split('@')[0] || 'User',
-      }
+      user,
     };
   }
 ```
@@ -93,9 +101,18 @@ Cung cấp API đăng nhập trả JSON data. Backend không can thiệp Cookie.
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
-    const user = await this.authService.validateUser(loginDto);
-    const { access_token, user: userData } = this.authService.login(user);
-    return { message: 'Login successful', user: userData, access_token };
+    const validatedUser = await this.authService.validateUser(loginDto);
+    const { access_token, user } = this.authService.login(validatedUser);
+
+    return {
+      message: 'Login successful',
+      user: {
+        email: user.email,
+        role: user.role,
+        name: user.name
+      },
+      access_token
+    };
   }
 ```
 
@@ -115,11 +132,19 @@ Module quản lý thao tác CRUD với dữ liệu người dùng qua TypeORM.
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin', 'user')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: any) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: { user: { sub: string, role: string } }) {
     const currentUser = req.user;
+
+    // Only current user or admin can update profile
     if (currentUser.role !== 'admin' && currentUser.sub !== id) {
       throw new ForbiddenException('You are not allowed to update other users');
     }
+
+    // Prevent regular users from elevating their own privileges
+    if (currentUser.role !== 'admin' && updateUserDto.role) {
+      delete updateUserDto.role;
+    }
+
     return this.userService.update(id, updateUserDto);
   }
 ```
@@ -139,8 +164,12 @@ Với Đăng nhập Google, luồng hoạt động dùng điều hướng (Redir
 ```typescript
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
+  async googleAuthRedirect(
+    @Req() req: { user: { email: string; firstName: string; lastName: string; picture?: string; accessToken?: string } },
+    @Res() res: Response
+  ) {
     const { access_token } = await this.authService.googleLogin(req);
+
     res.redirect(`http://localhost:3000/auth/callback?status=success&token=${access_token}`);
   }
 ```
@@ -219,3 +248,55 @@ Backend có nhiệm vụ tự động xử lý và chuẩn hoá các trường d
 ### 8.2. Truy vấn đặc thù (Custom Queries)
 Dù hệ thống có bộ phân trang chuẩn (Pagination), một số API giao diện khách hàng (Storefront) vẫn cần được thiết kế trả về dạng payload tùy biến để tối ưu tốc độ và UI.
 - **Tối ưu Relations & Trả kết quả trực tiếp:** Trong `findBestSeller`, thay vì dùng pagination chuẩn, hệ thống thiết lập giới hạn cứng `take: 4`, tắt bớt các relation không cần thiết (`relations: { categories: false }`), và trả thẳng dữ liệu `{ data: hotItem }` để phục vụ riêng cho Frontend Section "Best Sellers". Điều này giảm đáng kể chi phí truy vấn SQL và network payload.
+
+---
+
+## 9. Chi tiết Category Module (Danh mục) & Auto-Slug
+
+Module Category (`src/category`) hỗ trợ phân loại sản phẩm. Đặc điểm nổi bật là tự động tạo mã định danh (slug).
+
+### 9.1. Tự động sinh `value` (Slug)
+Khi tạo mới hoặc cập nhật `label` (tên danh mục), Backend sử dụng hàm `toSlug()` để tự động tạo `value` chuẩn SEO. Điều này giúp tránh việc Client phải tự thiết kế slug.
+```typescript
+  // Tự động sinh mã 'value' từ 'label' (dùng Slug chuẩn SEO)
+  const value = toSlug(createCategoryDto.label);
+
+  // Kiểm tra trùng lặp
+  const existingCategory = await this.categoryRepository.findOne({ where: { value } });
+  if (existingCategory) {
+    throw new ConflictException("Category already exists");
+  }
+```
+
+### 9.2. API riêng biệt phục vụ Frontend
+- **Pagination chuẩn:** API `findAll` sử dụng pagination chuẩn với `PageOptionsDto`.
+- **Giao diện trang chủ (Home Page):** Sử dụng API riêng `categoryHomePage()` trả về trực tiếp mảng dữ liệu (giới hạn `take: 8`) giúp tối ưu tốc độ load trên trang chủ.
+
+---
+
+## 10. Chi tiết Cart Module (Giỏ hàng) - User & Admin API
+
+Cart Module (`src/cart`) quản lý giỏ hàng của người dùng, phân tách rõ ràng API cho Người dùng (User) và Quản trị viên (Admin).
+
+### 10.1. Bảo mật User Cart
+Các thao tác của user như thêm, sửa, xoá giỏ hàng đều sử dụng `@UseGuards(AuthGuard('jwt'))` và trích xuất `userId` từ token (`req.user.sub`). Người dùng không cần gửi `userId` lên, giúp bảo mật và tránh can thiệp chéo dữ liệu.
+```typescript
+  @UseGuards(AuthGuard('jwt'))
+  @Post('items')
+  addToCart(@Request() req: RequestWithUser, @Body() addToCartDto: AddToCartDto) {
+    const userId = req.user.sub;
+    return this.cartService.addToCart(userId, addToCartDto);
+  }
+```
+
+### 10.2. Tính toán Động (Dynamic Calculation)
+- **Tổng tiền (`subTotal`):** Tổng tiền của giỏ hàng được tính toán động (on-the-fly) khi truy vấn (lấy giá sản phẩm hiện tại nhân với số lượng), tránh lưu dư thừa dữ liệu vào DB.
+- **Sản phẩm gợi ý:** API lấy giỏ hàng (`getMyCart`) còn đính kèm thêm `suggestedProducts` (lấy từ best sellers) vào response giúp frontend dễ dàng hiển thị phần "Có thể bạn cũng thích".
+
+### 10.3. Admin API (Marketing & Abandoned Carts)
+Cung cấp API cho Admin quản lý các giỏ hàng đang bị bỏ quên (có chứa item nhưng chưa thanh toán) để hỗ trợ chiến dịch Marketing (gửi email nhắc nhở).
+```typescript
+  // Lấy những giỏ hàng có ít nhất 1 item bên trong (đang bị bỏ quên)
+  const queryBuilder = this.cartRepository.createQueryBuilder('cart')
+    .innerJoin('cart.items', 'items') // Chỉ lấy nếu có JOIN thành công với items
+```
