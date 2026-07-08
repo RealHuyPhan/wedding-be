@@ -1,11 +1,10 @@
 import { IsArray, IsBoolean, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 
 export class CreateProductDto {
     @IsString()
     @IsNotEmpty()
     label: string;
-
 
     @IsString()
     @IsNotEmpty()
@@ -15,7 +14,8 @@ export class CreateProductDto {
     @IsNotEmpty()
     tags: string;
 
-    @IsNumber()
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
     price: number;
 
     // Dùng @IsOptional() để cho phép có hoặc không truyền trường này
@@ -33,6 +33,18 @@ export class CreateProductDto {
     @IsOptional()
     image?: string;
 
+    @IsString()
+    @IsOptional()
+    printingTechnique?: string;
+
+    @IsString()
+    @IsOptional()
+    paperStock?: string;
+
+    @IsString()
+    @IsOptional()
+    dimensions?: string;
+
     @IsOptional()
     @Transform(({ value }: { value: string | boolean | undefined }) => value === 'true' || value === true)
     @IsBoolean()
@@ -43,11 +55,13 @@ export class CreateProductDto {
     @IsBoolean()
     isDiscountItem?: boolean;
 
-    @IsNumber()
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
     @IsOptional()
     discountPrice?: number;
 
-    @IsNumber()
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
     @IsOptional()
     discountPercent?: number;
 

@@ -25,6 +25,15 @@ export class Product {
     @Column({ nullable: true })
     image: string;
 
+    @Column({ nullable: true })
+    printingTechnique: string;
+
+    @Column({ nullable: true })
+    paperStock: string;
+
+    @Column({ nullable: true })
+    dimensions: string;
+
     @Column({ default: false })
     isHotItem: boolean;
 
