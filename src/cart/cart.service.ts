@@ -54,15 +54,15 @@ export class CartService {
     }, 0);
 
     // Lấy sản phẩm gợi ý (Best Sellers)
-    const bestSellersResult = await this.productService.findBestSeller();
-    const suggestedProducts = bestSellersResult.data || [];
+    // const bestSellersResult = await this.productService.findBestSeller();
+    // const suggestedProducts = bestSellersResult.data || [];
 
     return {
       data: {
         ...cart,
         subTotal,
       },
-      suggestedProducts,
+      // suggestedProducts,
     };
   }
 
