@@ -11,7 +11,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 export class AuthController {
   constructor(private authService: AuthService) { }
 
-  @ApiOperation({ summary: 'Đăng nhập', description: 'Đăng nhập bằng Email và Password, trả về JWT Token' })
+  @ApiOperation({ summary: 'Login', description: 'Login with Email and Password, returns JWT Token' })
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
@@ -30,7 +30,7 @@ export class AuthController {
     };
   }
 
-  @ApiOperation({ summary: 'Đăng ký tài khoản', description: 'Tạo tài khoản mới với quyền mặc định là user' })
+  @ApiOperation({ summary: 'Register account', description: 'Create a new account with default role as user' })
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
     // Force role to 'user' to prevent privilege escalation via public API
@@ -49,21 +49,21 @@ export class AuthController {
     };
   }
 
-  @ApiOperation({ summary: 'Đăng xuất', description: 'API Đăng xuất (chỉ trả về thông báo thành công)' })
+  @ApiOperation({ summary: 'Logout', description: 'Logout API (returns success message)' })
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   logout() {
     return { message: 'Logged out successfully' };
   }
 
-  @ApiOperation({ summary: 'Đăng nhập bằng Google', description: 'Chuyển hướng đến màn hình đăng nhập của Google' })
+  @ApiOperation({ summary: 'Login with Google', description: 'Redirect to Google login screen' })
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleAuth() {
     // Initiates the Google OAuth2 login flow
   }
 
-  @ApiOperation({ summary: 'Google Callback', description: 'Xử lý callback từ Google, tự động chuyển hướng về Frontend kèm Token' })
+  @ApiOperation({ summary: 'Google Callback', description: 'Handle Google callback, redirect to Frontend with Token' })
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(
@@ -75,7 +75,7 @@ export class AuthController {
     res.redirect(`http://localhost:3000/auth/callback?status=success&token=${access_token}`);
   }
 
-  @ApiOperation({ summary: 'Lấy Profile', description: 'Lấy thông tin tài khoản đang đăng nhập hiện tại' })
+  @ApiOperation({ summary: 'Get Profile', description: 'Get current logged-in user profile' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Get('me')

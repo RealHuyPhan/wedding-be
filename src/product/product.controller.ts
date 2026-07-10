@@ -13,7 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 export class ProductController {
   constructor(private readonly productService: ProductService) { }
 
-  @ApiOperation({ summary: '[Admin] Tạo sản phẩm', description: 'Thêm sản phẩm mới (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Create product', description: 'Add a new product (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -22,25 +22,25 @@ export class ProductController {
     return this.productService.create(createProductDto);
   }
 
-  @ApiOperation({ summary: 'Lấy danh sách sản phẩm', description: 'Có hỗ trợ phân trang và tìm kiếm theo tên (Public)' })
+  @ApiOperation({ summary: 'Get products list', description: 'Supports pagination and search by name (Public)' })
   @Get()
   findAll(@Query() pageOptionsDto: PageOptionsDto) {
     return this.productService.findAll(pageOptionsDto);
   }
 
-  @ApiOperation({ summary: 'Lấy danh sách Best Sellers', description: 'Lấy 4 sản phẩm bán chạy nhất hiện thị trên trang chủ (Public)' })
+  @ApiOperation({ summary: 'Get Best Sellers', description: 'Get top 4 best-selling products for the homepage (Public)' })
   @Get('best-sellers')
   findBestSeller() {
     return this.productService.findBestSeller();
   }
 
-  @ApiOperation({ summary: 'Lấy chi tiết sản phẩm', description: 'Lấy thông tin sản phẩm bằng giá trị value (slug) (Public)' })
+  @ApiOperation({ summary: 'Get product details', description: 'Get product information by value (slug) (Public)' })
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productService.findOne(id);
   }
 
-  @ApiOperation({ summary: '[Admin] Cập nhật sản phẩm', description: 'Cập nhật thông tin, giá, danh mục sản phẩm (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Update product', description: 'Update product info, price, categories (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -49,7 +49,7 @@ export class ProductController {
     return this.productService.update(id, updateProductDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Xóa sản phẩm', description: 'Xóa vĩnh viễn sản phẩm khỏi hệ thống (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Delete product', description: 'Permanently delete a product from the system (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')

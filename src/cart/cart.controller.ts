@@ -24,7 +24,7 @@ export class CartController {
   // USER API (My Cart)
   // --------------------------------------------------------------------------
 
-  @ApiOperation({ summary: 'Xem giỏ hàng', description: 'Lấy thông tin giỏ hàng của user đang đăng nhập' })
+  @ApiOperation({ summary: 'View cart', description: 'Get shopping cart for the logged-in user' })
   @UseGuards(AuthGuard('jwt'))
   @Get()
   getMyCart(@Request() req: RequestWithUser) {
@@ -32,7 +32,7 @@ export class CartController {
     return this.cartService.getMyCart(userId);
   }
 
-  @ApiOperation({ summary: 'Thêm vào giỏ hàng', description: 'Thêm sản phẩm hoặc tăng số lượng nếu đã có trong giỏ' })
+  @ApiOperation({ summary: 'Add to cart', description: 'Add product or increase quantity if already exists in cart' })
   @UseGuards(AuthGuard('jwt'))
   @Post('items')
   addToCart(@Request() req: RequestWithUser, @Body() addToCartDto: AddToCartDto) {
@@ -40,7 +40,7 @@ export class CartController {
     return this.cartService.addToCart(userId, addToCartDto);
   }
 
-  @ApiOperation({ summary: 'Cập nhật số lượng', description: 'Thay đổi số lượng của 1 sản phẩm trong giỏ hàng' })
+  @ApiOperation({ summary: 'Update quantity', description: 'Change quantity of a product in the cart' })
   @UseGuards(AuthGuard('jwt'))
   @Patch('items/:itemId')
   updateItemQuantity(@Request() req: RequestWithUser, @Param('itemId') itemId: string, @Body() updateCartItemDto: UpdateCartItemDto) {
@@ -48,7 +48,7 @@ export class CartController {
     return this.cartService.updateItemQuantity(userId, itemId, updateCartItemDto.quantity);
   }
 
-  @ApiOperation({ summary: 'Xóa 1 sản phẩm', description: 'Xóa hoàn toàn 1 sản phẩm khỏi giỏ hàng' })
+  @ApiOperation({ summary: 'Remove item', description: 'Completely remove a product from the cart' })
   @UseGuards(AuthGuard('jwt'))
   @Delete('items/:itemId')
   removeItem(@Request() req: RequestWithUser, @Param('itemId') itemId: string) {
@@ -56,7 +56,7 @@ export class CartController {
     return this.cartService.removeItem(userId, itemId);
   }
 
-  @ApiOperation({ summary: 'Xóa sạch giỏ hàng', description: 'Xóa toàn bộ sản phẩm trong giỏ' })
+  @ApiOperation({ summary: 'Clear cart', description: 'Remove all products from the cart' })
   @UseGuards(AuthGuard('jwt'))
   @Delete()
   clearCart(@Request() req: RequestWithUser) {
@@ -68,7 +68,7 @@ export class CartController {
   // ADMIN API (Marketing / Abandoned Carts)
   // --------------------------------------------------------------------------
 
-  @ApiOperation({ summary: '[Admin] Lấy toàn bộ giỏ hàng', description: 'Theo dõi giỏ hàng bị bỏ quên (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Get all carts', description: 'Monitor abandoned carts (Admin only)' })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   @Get('admin/all')
@@ -76,7 +76,7 @@ export class CartController {
     return this.cartService.getAllCartsForAdmin(pageOptionsDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Lấy chi tiết giỏ hàng', description: 'Xem chi tiết giỏ hàng của bất kỳ ai (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Get cart details', description: 'View cart details of any user (Admin only)' })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   @Get('admin/:cartId')

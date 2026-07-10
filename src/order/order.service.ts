@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PageOptionsDto } from '../common/dto/page-options.dto';
+import { paginate } from '../common/utils/pagination.util';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -37,7 +39,7 @@ export class OrderService {
       });
 
       if (!cart || cart.items.length === 0) {
-        throw new BadRequestException('Giỏ hàng trống');
+        throw new BadRequestException('Cart is empty');
       }
 
       // 2. Tính tổng tiền (Sử dụng đơn vị Cent để tránh lỗi sai số thập phân của Javascript khi tính tiền CAD)
@@ -45,7 +47,7 @@ export class OrderService {
       for (const item of cart.items) {
         const product = item.product;
         if (!product) {
-          throw new NotFoundException('Sản phẩm không tồn tại');
+          throw new NotFoundException('Product not found');
         }
 
         // Đổi giá thành số nguyên (Cent) bằng cách nhân 100 và làm tròn
@@ -59,7 +61,7 @@ export class OrderService {
       });
 
       if (!shippingDest) {
-        throw new BadRequestException('Khu vực giao hàng không hợp lệ hoặc không còn hỗ trợ');
+        throw new BadRequestException('Invalid or unsupported shipping destination');
       }
 
       // Đưa phí ship về dạng Cent để cộng cho an toàn
@@ -140,16 +142,41 @@ export class OrderService {
       }
     });
     if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng');
+      throw new NotFoundException('Order not found');
     }
 
     // Nếu có truyền user vào (từ Controller), kiểm tra quyền sở hữu
     if (currentUser) {
       if (currentUser.role !== 'admin' && order.user.id !== currentUser.id) {
-        throw new ForbiddenException('Bạn không có quyền xem đơn hàng này');
+        throw new ForbiddenException('You do not have permission to view this order');
       }
     }
 
     return order;
+  }
+
+  // ----------------------------------------------------------------------
+  // CÁC HÀM DÀNH CHO ADMIN
+  // ----------------------------------------------------------------------
+
+  async findAllForAdmin(pageOptionsDto: PageOptionsDto) {
+    const { page = 0, size = 10 } = pageOptionsDto;
+
+    const queryBuilder = this.orderRepository.createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .orderBy('order.createdAt', 'DESC');
+
+    // Chú ý: Ở đây ta gọi hàm paginate dùng chung
+    return await paginate(queryBuilder, page, size);
+  }
+
+  async updateStatus(id: string, status: OrderStatus) {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    order.status = status;
+    return this.orderRepository.save(order);
   }
 }

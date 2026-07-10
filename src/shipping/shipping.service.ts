@@ -10,7 +10,7 @@ export class ShippingService {
   constructor(
     @InjectRepository(ShippingDestination)
     private shippingRepository: Repository<ShippingDestination>,
-  ) {}
+  ) { }
 
   create(createShippingDto: CreateShippingDto) {
     const newDest = this.shippingRepository.create(createShippingDto);
@@ -30,7 +30,7 @@ export class ShippingService {
 
   async findOne(id: string) {
     const dest = await this.shippingRepository.findOne({ where: { id } });
-    if (!dest) throw new NotFoundException('Không tìm thấy điểm giao hàng này');
+    if (!dest) throw new NotFoundException('Shipping destination not found');
     return dest;
   }
 

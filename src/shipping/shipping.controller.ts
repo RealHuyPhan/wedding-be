@@ -12,7 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 export class ShippingController {
   constructor(private readonly shippingService: ShippingService) {}
 
-  @ApiOperation({ summary: '[Admin] Tạo cấu hình phí giao hàng', description: 'Tạo một khu vực giao hàng mới kèm giá cước (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Create shipping config', description: 'Create a new shipping destination and fee (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -21,7 +21,7 @@ export class ShippingController {
     return this.shippingService.create(createShippingDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Lấy danh sách toàn bộ cấu hình ship', description: 'Lấy tất cả khu vực giao hàng kể cả đã vô hiệu hóa (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Get all shipping configs', description: 'Get all shipping destinations including disabled ones (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -30,19 +30,19 @@ export class ShippingController {
     return this.shippingService.findAll();
   }
 
-  @ApiOperation({ summary: 'Lấy danh sách khu vực giao hàng (Public)', description: 'Dùng cho Frontend hiển thị ở form Checkout (Chỉ hiện các vùng isActive = true)' })
+  @ApiOperation({ summary: 'Get active shipping destinations (Public)', description: 'Used for Frontend Checkout form (Only shows destinations with isActive = true)' })
   @Get('active')
   findActive() {
     return this.shippingService.findActive();
   }
 
-  @ApiOperation({ summary: 'Lấy chi tiết 1 khu vực giao hàng', description: 'Truy xuất thông tin 1 vùng giao hàng bằng ID' })
+  @ApiOperation({ summary: 'Get shipping destination details', description: 'Get details of a specific shipping destination by ID' })
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.shippingService.findOne(id);
   }
 
-  @ApiOperation({ summary: '[Admin] Cập nhật phí giao hàng', description: 'Đổi giá tiền hoặc vô hiệu hóa khu vực giao hàng (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Update shipping config', description: 'Change shipping fee or disable a destination (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -51,7 +51,7 @@ export class ShippingController {
     return this.shippingService.update(id, updateShippingDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Xóa khu vực giao hàng', description: 'Xóa vĩnh viễn khu vực giao hàng (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Delete shipping config', description: 'Permanently delete a shipping destination (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')

@@ -13,7 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
-  @ApiOperation({ summary: '[Admin] Tạo danh mục', description: 'Tạo danh mục sản phẩm mới (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Create category', description: 'Create a new product category (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -22,19 +22,19 @@ export class CategoryController {
     return this.categoryService.create(createCategoryDto);
   }
 
-  @ApiOperation({ summary: 'Lấy danh sách danh mục', description: 'Có hỗ trợ phân trang và tìm kiếm (Public)' })
+  @ApiOperation({ summary: 'Get categories list', description: 'Supports pagination and search (Public)' })
   @Get()
   findAll(@Query() pageOptionsDto: PageOptionsDto) {
     return this.categoryService.findAll(pageOptionsDto);
   }
 
-  @ApiOperation({ summary: 'Lấy chi tiết danh mục', description: 'Xem chi tiết 1 danh mục theo ID (Public)' })
+  @ApiOperation({ summary: 'Get category details', description: 'View category details by ID (Public)' })
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.categoryService.findOne(id);
   }
 
-  @ApiOperation({ summary: '[Admin] Cập nhật danh mục', description: 'Chỉnh sửa thông tin danh mục (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Update category', description: 'Edit category information (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
@@ -44,7 +44,7 @@ export class CategoryController {
   }
 
 
-  @ApiOperation({ summary: '[Admin] Xóa danh mục', description: 'Xóa danh mục theo ID (Chỉ Admin)' })
+  @ApiOperation({ summary: '[Admin] Delete category', description: 'Delete category by ID (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
