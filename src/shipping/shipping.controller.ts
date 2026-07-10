@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ShippingService } from './shipping.service';
 import { CreateShippingDto } from './dto/create-shipping.dto';
 import { UpdateShippingDto } from './dto/update-shipping.dto';
@@ -10,31 +10,22 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 @ApiTags('Shipping Config')
 @Controller('shipping')
 export class ShippingController {
-  constructor(private readonly shippingService: ShippingService) {}
+  constructor(private readonly shippingService: ShippingService) { }
 
   @ApiOperation({ summary: '[Admin] Create shipping config', description: 'Create a new shipping destination and fee (Admin only)' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
-  @Post()
   create(@Body() createShippingDto: CreateShippingDto) {
     return this.shippingService.create(createShippingDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Get all shipping configs', description: 'Get all shipping destinations including disabled ones (Admin only)' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  @ApiOperation({ summary: 'Get all shipping configs', description: 'Get all shipping destinations' })
   @Get()
   findAll() {
     return this.shippingService.findAll();
   }
 
-  @ApiOperation({ summary: 'Get active shipping destinations (Public)', description: 'Used for Frontend Checkout form (Only shows destinations with isActive = true)' })
-  @Get('active')
-  findActive() {
-    return this.shippingService.findActive();
-  }
 
   @ApiOperation({ summary: 'Get shipping destination details', description: 'Get details of a specific shipping destination by ID' })
   @Get(':id')

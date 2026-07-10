@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { paginate } from '../common/utils/pagination.util';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -57,7 +57,7 @@ export class OrderService {
 
       // 2.5 Lấy thông tin Shipping Destination
       const shippingDest = await queryRunner.manager.findOne(ShippingDestination, {
-        where: { id: shippingDestinationId, isActive: true }
+        where: { id: shippingDestinationId }
       });
 
       if (!shippingDest) {
@@ -109,7 +109,7 @@ export class OrderService {
       // Commit transaction
       await queryRunner.commitTransaction();
 
-      return savedOrder;
+      return { statusCode: HttpStatus.CREATED, message: 'Order created successfully' };
     } catch (err) {
       // Nếu có lỗi, rollback toàn bộ
       await queryRunner.rollbackTransaction();
@@ -177,6 +177,7 @@ export class OrderService {
     }
 
     order.status = status;
-    return this.orderRepository.save(order);
+    await this.orderRepository.save(order);
+    return { statusCode: HttpStatus.OK, message: 'Order status updated successfully' };
   }
 }

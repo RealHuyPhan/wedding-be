@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, HttpStatus } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -32,17 +32,34 @@ export class AuthService {
   login(user: Partial<User>) {
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
+      statusCode: HttpStatus.OK,
+      message: 'Login successful',
       access_token: this.jwtService.sign(payload),
-      user,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name
+      }
     };
   }
 
   async register(createUserDto: CreateUserDto) {
-    const result = await this.userService.create(createUserDto);
-    const user = await this.userService.findOne(result.id);
+    createUserDto.role = 'user';
+    await this.userService.create(createUserDto);
+    const user = await this.userService.findByEmail(createUserDto.email);
+    if (!user) throw new UnauthorizedException('Registration failed');
+    const payload = { email: user.email, sub: user.id, role: user.role };
     return {
-      access_token: this.jwtService.sign({ email: user.email, sub: user.id, role: user.role }),
-      user,
+      statusCode: HttpStatus.CREATED,
+      message: 'Registration successful',
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name
+      }
     };
   }
 
@@ -72,5 +89,9 @@ export class AuthService {
       role: user.role,
       name: user.name
     };
+  }
+
+  logout() {
+    return { statusCode: HttpStatus.OK, message: 'Logged out successfully' };
   }
 }

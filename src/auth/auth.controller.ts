@@ -16,44 +16,20 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     const validatedUser = await this.authService.validateUser(loginDto);
-    const { access_token, user } = this.authService.login(validatedUser);
-
-    return {
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name
-      },
-      access_token
-    };
+    return this.authService.login(validatedUser);
   }
 
   @ApiOperation({ summary: 'Register account', description: 'Create a new account with default role as user' })
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
-    // Force role to 'user' to prevent privilege escalation via public API
-    createUserDto.role = 'user';
-    const { access_token, user } = await this.authService.register(createUserDto);
-
-    return {
-      message: 'Registration successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name
-      },
-      access_token
-    };
+    return this.authService.register(createUserDto);
   }
 
   @ApiOperation({ summary: 'Logout', description: 'Logout API (returns success message)' })
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   logout() {
-    return { message: 'Logged out successfully' };
+    return this.authService.logout();
   }
 
   @ApiOperation({ summary: 'Login with Google', description: 'Redirect to Google login screen' })

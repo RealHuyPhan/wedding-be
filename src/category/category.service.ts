@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,10 +26,9 @@ export class CategoryService {
       throw new ConflictException("Category already exists");
     }
 
-    // Tạo và lưu danh mục vào cơ sở dữ liệu
     const category = this.categoryRepository.create({ ...createCategoryDto, value });
-    const savedCategory = await this.categoryRepository.save(category);
-    return { message: "Category created successfully", id: savedCategory.id };
+    await this.categoryRepository.save(category);
+    return { statusCode: HttpStatus.CREATED, message: "Category created successfully" };
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
@@ -87,7 +86,7 @@ export class CategoryService {
     Object.assign(existingCategory, updateCategoryDto);
 
     await this.categoryRepository.save(existingCategory);
-    return { message: "Category updated successfully" };
+    return { statusCode: HttpStatus.OK, message: "Category updated successfully" };
   }
 
   async remove(id: string) {
@@ -96,6 +95,6 @@ export class CategoryService {
       throw new NotFoundException("Category not found")
     }
     await this.categoryRepository.remove(existingCategory);
-    return { message: "Category deleted successfully" };
+    return { statusCode: HttpStatus.OK, message: "Category deleted successfully" };
   }
 }

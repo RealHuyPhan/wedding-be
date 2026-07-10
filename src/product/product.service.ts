@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, HttpStatus } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,8 +37,8 @@ export class ProductService {
       product.categories = foundCategories;
     }
 
-    const savedProduct = await this.productRepository.save(product);
-    return { message: "Product created successfully", id: savedProduct.id };
+    await this.productRepository.save(product);
+    return { statusCode: HttpStatus.CREATED, message: "Product created successfully" };
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
@@ -130,7 +130,7 @@ export class ProductService {
     }
 
     await this.productRepository.save(existingProduct);
-    return { message: "Product updated successfully" };
+    return { statusCode: HttpStatus.OK, message: "Product updated successfully" };
   }
 
   async remove(id: string) {
@@ -139,6 +139,6 @@ export class ProductService {
       throw new NotFoundException("Product not found")
     }
     await this.productRepository.remove(existingProduct);
-    return { message: "Product deleted successfully" };
+    return { statusCode: HttpStatus.OK, message: "Product deleted successfully" };
   }
 }

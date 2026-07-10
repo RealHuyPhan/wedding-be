@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cart } from './entities/cart.entity';
@@ -86,7 +86,7 @@ export class CartService {
       await this.cartItemRepository.save(newItem);
     }
 
-    return { message: 'Item added to cart successfully' };
+    return { statusCode: HttpStatus.CREATED, message: 'Item added to cart successfully' };
   }
 
   async updateItemQuantity(userId: string, itemId: string, quantity: number) {
@@ -100,13 +100,13 @@ export class CartService {
 
     if (quantity === 0) {
       await this.cartItemRepository.remove(item);
-      return { message: 'Item removed from cart' };
+      return { statusCode: HttpStatus.OK, message: 'Item removed from cart' };
     }
 
     item.quantity = quantity;
     await this.cartItemRepository.save(item);
 
-    return { message: 'Cart item updated' };
+    return { statusCode: HttpStatus.OK, message: 'Cart item updated' };
   }
 
   async removeItem(userId: string, itemId: string) {
@@ -118,7 +118,7 @@ export class CartService {
     }
 
     await this.cartItemRepository.remove(item);
-    return { message: 'Item removed from cart' };
+    return { statusCode: HttpStatus.OK, message: 'Item removed from cart' };
   }
 
   async clearCart(userId: string) {
@@ -126,7 +126,7 @@ export class CartService {
     if (cart.items.length > 0) {
       await this.cartItemRepository.remove(cart.items);
     }
-    return { message: 'Cart cleared successfully' };
+    return { statusCode: HttpStatus.OK, message: 'Cart cleared successfully' };
   }
 
   // --------------------------------------------------------------------------

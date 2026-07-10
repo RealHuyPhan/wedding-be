@@ -14,8 +14,6 @@ export class ShippingDestination {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   shippingFee: number;
 
-  @Column({ default: true })
-  isActive: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

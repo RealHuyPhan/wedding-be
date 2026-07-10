@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, ForbiddenException, HttpStatus } from '@nestjs/common';
 import { paginate } from '../common/utils/pagination.util';
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -29,8 +29,8 @@ export class UserService {
 
     const user = this.userRepository.create(createUserDto);
 
-    const savedUser = await this.userRepository.save(user);
-    return { message: "User created successfully", id: savedUser.id };
+    await this.userRepository.save(user);
+    return { statusCode: HttpStatus.CREATED, message: "User created successfully" };
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
@@ -75,7 +75,17 @@ export class UserService {
     return user;
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: UpdateUserDto, currentUser: { sub: string, role: string }) {
+    // Only current user or admin can update profile
+    if (currentUser.role !== 'admin' && currentUser.sub !== id) {
+      throw new ForbiddenException('You are not allowed to update other users');
+    }
+
+    // Prevent regular users from elevating their own privileges
+    if (currentUser.role !== 'admin' && updateUserDto.role) {
+      delete updateUserDto.role;
+    }
+
     const existingUser = await this.userRepository.findOne({ where: { id } })
     if (!existingUser) {
       throw new NotFoundException("User not found")
@@ -97,7 +107,7 @@ export class UserService {
 
     Object.assign(existingUser, updateUserDto);
     await this.userRepository.save(existingUser);
-    return { message: "User updated successfully" };
+    return { statusCode: HttpStatus.OK, message: "User updated successfully" };
   }
 
   async remove(id: string) {
@@ -105,8 +115,7 @@ export class UserService {
     if (!existingUser) {
       throw new NotFoundException("User not found")
     }
-
     await this.userRepository.remove(existingUser);
-    return { message: "User deleted successfully" };
+    return { statusCode: HttpStatus.OK, message: "User deleted successfully" };
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, Request, ForbiddenException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, Request, Query } from '@nestjs/common';
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -43,19 +43,7 @@ export class UserController {
   @Roles('admin', 'user')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: { user: { sub: string, role: string } }) {
-    const currentUser = req.user;
-
-    // Only current user or admin can update profile
-    if (currentUser.role !== 'admin' && currentUser.sub !== id) {
-      throw new ForbiddenException('You are not allowed to update other users');
-    }
-
-    // Prevent regular users from elevating their own privileges
-    if (currentUser.role !== 'admin' && updateUserDto.role) {
-      delete updateUserDto.role;
-    }
-
-    return this.userService.update(id, updateUserDto);
+    return this.userService.update(id, updateUserDto, req.user);
   }
 
   @ApiOperation({ summary: '[Admin] Delete user', description: 'Delete account by ID (Admin only)' })

@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateShippingDto {
   @IsString()
@@ -13,8 +13,6 @@ export class CreateShippingDto {
   @IsNotEmpty()
   shippingFee: number;
 
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
+
 }
 

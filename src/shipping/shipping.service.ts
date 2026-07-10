@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
 import { CreateShippingDto } from './dto/create-shipping.dto';
 import { UpdateShippingDto } from './dto/update-shipping.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,20 +12,14 @@ export class ShippingService {
     private shippingRepository: Repository<ShippingDestination>,
   ) { }
 
-  create(createShippingDto: CreateShippingDto) {
+  async create(createShippingDto: CreateShippingDto) {
     const newDest = this.shippingRepository.create(createShippingDto);
-    return this.shippingRepository.save(newDest);
+    await this.shippingRepository.save(newDest);
+    return { statusCode: HttpStatus.CREATED, message: "Shipping zone created successfully" };
   }
 
   findAll() {
     return this.shippingRepository.find({ order: { country: 'ASC', province: 'ASC' } });
-  }
-
-  findActive() {
-    return this.shippingRepository.find({
-      where: { isActive: true },
-      order: { country: 'ASC', province: 'ASC' }
-    });
   }
 
   async findOne(id: string) {
@@ -37,11 +31,13 @@ export class ShippingService {
   async update(id: string, updateShippingDto: UpdateShippingDto) {
     const dest = await this.findOne(id);
     const updated = Object.assign(dest, updateShippingDto);
-    return this.shippingRepository.save(updated);
+    await this.shippingRepository.save(updated);
+    return { statusCode: HttpStatus.OK, message: "Shipping zone updated successfully" };
   }
 
   async remove(id: string) {
     const dest = await this.findOne(id);
-    return this.shippingRepository.remove(dest);
+    await this.shippingRepository.remove(dest);
+    return { statusCode: HttpStatus.OK, message: "Shipping zone deleted successfully" };
   }
 }
