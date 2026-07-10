@@ -300,3 +300,48 @@ Cung cấp API cho Admin quản lý các giỏ hàng đang bị bỏ quên (có 
   const queryBuilder = this.cartRepository.createQueryBuilder('cart')
     .innerJoin('cart.items', 'items') // Chỉ lấy nếu có JOIN thành công với items
 ```
+
+---
+
+## 11. Chi tiết Order Module (Đơn hàng) & Giao dịch an toàn
+
+Order Module (`src/order`) là trái tim của hệ thống E-commerce, quản lý việc chuyển đổi từ Giỏ hàng sang Đơn hàng và tính toán tiền bạc.
+
+### 11.1. Database Transaction (Giao dịch nguyên tử)
+Quá trình Đặt hàng (Checkout) bao gồm nhiều bước: Lấy giỏ hàng -> Xác thực -> Tạo Order -> Trừ Cart -> Tạo OrderItems. Để tránh trường hợp mạng lỗi giữa chừng khiến dữ liệu bị sai lệch, tất cả được bọc trong một `queryRunner` transaction.
+```typescript
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // Các bước xử lý...
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction(); // Lùi lại toàn bộ nếu có lỗi
+      throw err;
+    }
+```
+
+### 11.2. Chống Sai Số Thập Phân (Floating Point Math)
+Trong Javascript, `0.1 + 0.2 = 0.30000000000000004`. Để đảm bảo tính chính xác tuyệt đối khi làm việc với tiền tệ (CAD), mọi phép cộng trừ (`subTotal` + `shippingFee`) đều được quy đổi ra số nguyên (Cent) bằng cách nhân 100 và dùng `Math.round()`, sau đó mới chia lại cho 100.
+
+### 11.3. Bảo mật IDOR (Insecure Direct Object Reference)
+Các API truy xuất thông tin nhạy cảm (như `GET /api/order/:id`) đều bắt buộc kiểm tra quyền sở hữu. Dù có biết UUID của đơn hàng, nhưng nếu `req.user.id` không khớp với `order.user.id` (và không phải Admin), hệ thống sẽ ném lỗi `403 Forbidden` ngay lập tức.
+
+---
+
+## 12. Chi tiết Shipping Module (Vận chuyển) & Phân quyền Admin
+
+Shipping Module (`src/shipping`) hỗ trợ cấu hình động phí giao hàng cho từng khu vực, thay vì phải hardcode trong mã nguồn.
+
+### 12.1. Cấu hình Vùng Động (Dynamic Destinations)
+- Bảng `ShippingDestination` lưu trữ thông tin: Quốc gia (`country`), Tỉnh/Bang (`province`), Phí giao hàng (`shippingFee`) và Cờ kích hoạt (`isActive`).
+- Khách hàng không được tự gõ tên quốc gia (để tránh sai chính tả), mà phải chọn từ danh sách Dropdown (được gọi từ API `GET /api/shipping/active`). 
+- Khi Checkout, Backend sẽ nhận `shippingDestinationId`, kiểm tra tính hợp lệ trong Database và cộng đúng giá tiền đó vào đơn hàng.
+
+### 12.2. Kiểm soát Quyền Trọng Yếu (RolesGuard)
+Do tính chất nhạy cảm của việc cấu hình bảng giá, toàn bộ API CRUD của module này đều được bảo vệ nghiêm ngặt bằng sự kết hợp của 2 Lớp bảo vệ (Guards):
+1. `AuthGuard('jwt')`: Bắt buộc phải đăng nhập.
+2. `RolesGuard` + `@Roles('admin')`: Bắt buộc phải có Role là `admin`. 
+
+Nếu một Hacker hoặc User bình thường cố tình gọi API xóa phí ship, `RolesGuard` sẽ chặn đứng ở tầng Middleware.

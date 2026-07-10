@@ -18,7 +18,6 @@ export class CreateUserDto {
     @MinLength(10, { message: 'Phone must be at least 10 characters long' })
     phone?: string;
 
-
     @IsOptional()
     @IsString()
     name?: string;
@@ -39,4 +38,5 @@ export class CreateUserDto {
     @IsOptional()
     @IsString()
     role?: string;
+
 }

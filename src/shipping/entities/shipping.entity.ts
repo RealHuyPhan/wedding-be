@@ -1,0 +1,25 @@
+import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+@Entity('shipping_destinations')
+export class ShippingDestination {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  country: string;
+
+  @Column({ nullable: true })
+  province: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  shippingFee: number;
+
+  @Column({ default: true })
+  isActive: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
