@@ -83,15 +83,6 @@ export class PaymentController {
         order.status = OrderStatus.PROCESSING;
         await this.orderRepository.save(order);
         this.logger.log(`Order ${orderId} status updated to PROCESSING`);
-
-        // Clear cart for this user after successful payment
-        if (order.user) {
-          await this.dataSource.query(
-            `DELETE FROM cart_items WHERE "cartId" IN (SELECT id FROM carts WHERE "userId" = $1)`,
-            [order.user.id]
-          );
-          this.logger.log(`Cart items cleared for user ${order.user.id}`);
-        }
       } else {
         this.logger.warn(`Order ${orderId} not found in database`);
       }

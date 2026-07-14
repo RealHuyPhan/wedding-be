@@ -82,6 +82,9 @@ export class Order {
     })
     paymentMethod: PaymentMethod;
 
+    @Column({ nullable: true })
+    paymentUrl: string;
+
     // 4. LIÊN KẾT VỚI CHI TIẾT ĐƠN HÀNG (Order Items)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     @OneToMany(() => OrderItem, (orderItem: OrderItem) => orderItem.order, { cascade: true })

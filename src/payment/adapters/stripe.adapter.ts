@@ -50,7 +50,7 @@ export class StripeAdapter implements IPaymentGateway {
       line_items: lineItems,
       mode: 'payment',
       success_url: `${this.frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${this.frontendUrl}/checkout`,
+      cancel_url: `${this.frontendUrl}/orders/${order.id}`,
       metadata: {
         orderId: order.id,
       },

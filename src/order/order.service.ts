@@ -4,6 +4,7 @@ import { paginate } from '../common/utils/pagination.util';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderAdminDto } from './dto/create-order-admin.dto';
 import { UpdateOrderAdminDto } from './dto/update-order-admin.dto';
+import { UpdateOrderShippingDto } from './dto/update-order-shipping.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order, OrderStatus, PaymentMethod } from './entities/order.entity';
 import { Repository, DataSource, IsNull, FindOptionsWhere } from 'typeorm';
@@ -126,8 +127,10 @@ export class OrderService {
 
       await queryRunner.manager.save(orderItems);
 
-      // 5. (Không xóa giỏ hàng ở đây nữa, giữ lại để nếu khách bấm Back vẫn còn. Sẽ xóa khi Webhook báo thanh toán thành công)
-
+      // 5. Xoá sạch giỏ hàng ngay lập tức để tránh clone order nếu khách bấm Back
+      if (cart.items && cart.items.length > 0) {
+        await queryRunner.manager.remove(cart.items);
+      }
       // Commit transaction
       await queryRunner.commitTransaction();
 
@@ -145,6 +148,10 @@ export class OrderService {
         savedOrder,
         orderItems,
       );
+
+      // Save paymentUrl to the database for future retrieval (e.g., "Continue Payment")
+      savedOrder.paymentUrl = paymentUrl;
+      await this.orderRepository.save(savedOrder);
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -188,6 +195,17 @@ export class OrderService {
     if (currentUser) {
       if (currentUser.role !== 'admin' && order.user.id !== currentUser.id) {
         throw new ForbiddenException('You do not have permission to view this order');
+      }
+    }
+
+    // Backward compatibility: Tự động tạo paymentUrl cho các đơn cũ nếu chưa có
+    if (order.status === OrderStatus.PENDING_PAYMENT && !order.paymentUrl) {
+      try {
+        const paymentUrl = await this.paymentService.createPaymentSession(order, order.items);
+        order.paymentUrl = paymentUrl;
+        await this.orderRepository.save(order);
+      } catch (err) {
+        console.error('Failed to generate paymentUrl for old order:', err);
       }
     }
 
@@ -299,7 +317,31 @@ export class OrderService {
     Object.assign(order, updateOrderAdminDto);
     await this.orderRepository.save(order);
     
-    return { statusCode: HttpStatus.OK, message: 'Order updated successfully' };
+    return { statusCode: HttpStatus.OK, message: 'Order updated successfully by admin' };
+  }
+
+  async updateShippingInfo(id: string, userId: string, updateOrderShippingDto: UpdateOrderShippingDto) {
+    const order = await this.orderRepository.findOne({ 
+      where: { id },
+      relations: { user: true }
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (!order.user || order.user.id !== userId) {
+      throw new ForbiddenException('You do not have permission to edit this order');
+    }
+
+    if (order.status !== OrderStatus.PROCESSING && order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new BadRequestException('You can only update shipping information when the order is processing or pending payment');
+    }
+
+    Object.assign(order, updateOrderShippingDto);
+    await this.orderRepository.save(order);
+    
+    return { statusCode: HttpStatus.OK, message: 'Shipping information updated successfully' };
   }
 
   async remove(id: string) {

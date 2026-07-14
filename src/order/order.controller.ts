@@ -9,6 +9,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateOrderShippingDto } from './dto/update-order-shipping.dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -69,6 +70,17 @@ export class OrderController {
   @Patch('admin/:id')
   updateByAdmin(@Param('id') id: string, @Body() updateOrderAdminDto: UpdateOrderAdminDto) {
     return this.orderService.updateByAdmin(id, updateOrderAdminDto);
+  }
+
+  @ApiOperation({ summary: 'Update order shipping info', description: 'Update order shipping info by user if status is processing' })
+  @UseGuards(AuthGuard('jwt'))
+  @Patch(':id/shipping')
+  updateShippingInfo(
+    @Param('id') id: string, 
+    @Request() req: { user: { id: string } }, 
+    @Body() updateOrderShippingDto: UpdateOrderShippingDto
+  ) {
+    return this.orderService.updateShippingInfo(id, req.user.id, updateOrderShippingDto);
   }
 
   @ApiOperation({ summary: '[Admin] Delete order', description: 'Delete an order (Admin only)' })
