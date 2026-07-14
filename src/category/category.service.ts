@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpStatus } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,7 +6,7 @@ import { Category } from './entities/category.entity';
 import { Repository, In } from 'typeorm';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
-import { toSlug } from 'src/common/utils/string.util';
+import slugify from 'slugify';
 
 @Injectable()
 export class CategoryService {
@@ -15,18 +15,43 @@ export class CategoryService {
     private readonly categoryRepository: Repository<Category>,
   ) { }
 
+  private async generateUniqueCode(name: string, excludeId?: string): Promise<string> {
+    const baseSlug = slugify(name, { lower: true, strict: true, locale: 'vi' });
+    let code = baseSlug || 'category';
+    let counter = 1;
+
+    while (true) {
+      const query = this.categoryRepository.createQueryBuilder('category')
+        .where('category.categoryCode = :code', { code });
+
+      if (excludeId) {
+        query.andWhere('category.id != :id', { id: excludeId });
+      }
+
+      const exists = await query.getOne();
+      if (!exists) {
+        return code;
+      }
+      code = `${baseSlug}-${counter}`;
+      counter++;
+    }
+  }
 
   async create(createCategoryDto: CreateCategoryDto) {
-    // Tự động sinh mã 'value' từ 'label' (dùng Slug chuẩn SEO)
-    const value = toSlug(createCategoryDto.label);
+    let categoryCode = createCategoryDto.categoryCode;
 
-    // Kiểm tra xem danh mục này đã tồn tại chưa (dựa theo mã value)
-    const existingCategory = await this.categoryRepository.findOne({ where: { value } });
-    if (existingCategory) {
-      throw new ConflictException("Category already exists");
+    // Nếu frontend không truyền categoryCode hoặc ta muốn ghi đè, tự động sinh từ tên
+    if (!categoryCode) {
+      categoryCode = await this.generateUniqueCode(createCategoryDto.category);
+    } else {
+      // Nếu có truyền, đảm bảo format chuẩn slug và duy nhất
+      categoryCode = slugify(categoryCode, { lower: true, strict: true, locale: 'vi' });
+      categoryCode = await this.generateUniqueCode(categoryCode);
     }
 
-    const category = this.categoryRepository.create({ ...createCategoryDto, value });
+    createCategoryDto.categoryCode = categoryCode;
+
+    const category = this.categoryRepository.create(createCategoryDto);
     await this.categoryRepository.save(category);
     return { statusCode: HttpStatus.CREATED, message: "Category created successfully" };
   }
@@ -37,7 +62,7 @@ export class CategoryService {
 
     if (search) {
       queryBuilder.where(
-        '(category.label ILIKE :search or category.value ILIKE :search or category.description ILIKE :search)',
+        '(category.category ILIKE :search or category.categoryCode ILIKE :search or category.description ILIKE :search)',
         { search: `%${search}%` }
       );
     }
@@ -71,18 +96,20 @@ export class CategoryService {
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    // Tìm danh mục cần cập nhật
     const existingCategory = await this.categoryRepository.findOne({ where: { id } })
     if (!existingCategory) {
       throw new NotFoundException("Category not found")
     }
 
-    // Nếu có sửa tên (label) thì phải cập nhật lại mã (value) tương ứng bằng hàm Slug
-    if (updateCategoryDto.label) {
-      existingCategory.value = toSlug(updateCategoryDto.label);
+    if (updateCategoryDto.categoryCode) {
+      // Nếu có sửa mã thì slugify và kiểm tra trùng lặp
+      const newCode = slugify(updateCategoryDto.categoryCode, { lower: true, strict: true, locale: 'vi' });
+      updateCategoryDto.categoryCode = await this.generateUniqueCode(newCode, id);
+    } else if (updateCategoryDto.category && updateCategoryDto.category !== existingCategory.category) {
+      // Tùy chọn: Nếu sửa tên mà không truyền mã, có thể tự cập nhật mã theo tên mới
+      // updateCategoryDto.categoryCode = await this.generateUniqueCode(updateCategoryDto.category, id);
     }
 
-    // Nạp dữ liệu mới vào entity (những trường không gửi lên sẽ giữ nguyên giá trị cũ)
     Object.assign(existingCategory, updateCategoryDto);
 
     await this.categoryRepository.save(existingCategory);

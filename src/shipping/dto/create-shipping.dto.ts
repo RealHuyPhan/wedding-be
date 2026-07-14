@@ -6,8 +6,16 @@ export class CreateShippingDto {
   country: string;
 
   @IsString()
+  @IsNotEmpty()
+  countryCode: string;
+
+  @IsString()
   @IsOptional()
   province?: string;
+
+  @IsString()
+  @IsOptional()
+  provinceCode?: string;
 
   @IsNumber()
   @IsNotEmpty()

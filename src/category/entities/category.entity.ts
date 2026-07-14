@@ -7,10 +7,10 @@ export class Category {
     id: string;
 
     @Column({ default: '' })
-    label: string;
+    category: string;
 
-    @Column({ default: '' })
-    value: string;
+    @Column({ unique: true })
+    categoryCode: string;
 
     @Column({ nullable: true })
     description: string;

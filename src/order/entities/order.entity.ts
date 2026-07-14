@@ -49,6 +49,15 @@ export class Order {
     shippingProvince: string;
 
     @Column({ nullable: true })
+    shippingCity: string;
+
+    @Column({ nullable: true })
+    shippingPostcode: string;
+
+    @Column({ nullable: true })
+    shippingUnit: string;
+
+    @Column({ nullable: true })
     orderNotes: string;
 
     // 3. THÔNG TIN THANH TOÁN & TRẠNG THÁI

@@ -1,0 +1,9 @@
+TypeORMError: Undefined value encountered in nested relation 'Cart.user' of a where condition. All properties of the nested object are undefined. Set 'invalidWhereValuesBehavior.undefined' to 'ignore' in connection options to skip properties with undefined values.
+    at SelectQueryBuilder.buildWhere (C:\All\Other\wedding\be\src\query-builder\SelectQueryBuilder.ts:4418:39)
+    at SelectQueryBuilder.applyFindOptions (C:\All\Other\wedding\be\src\query-builder\SelectQueryBuilder.ts:3186:40)
+    at SelectQueryBuilder.setFindOptions (C:\All\Other\wedding\be\src\query-builder\SelectQueryBuilder.ts:108:14)
+    at EntityManager.findOne (C:\All\Other\wedding\be\src\entity-manager\EntityManager.ts:1343:14)
+    at OrderService.checkout (C:\All\Other\wedding\be\src\order\order.service.ts:36:46)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\All\Other\wedding\be\node_modules\@nestjs\core\router\router-execution-context.js:47:62
+    at async C:\All\Other\wedding\be\node_modules\@nestjs\core\router\router-proxy.js:9:17

@@ -20,7 +20,7 @@ export class OrderService {
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingDestinationId, orderNotes, paymentMethod } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingDestinationId, shippingCity, shippingPostcode, shippingUnit, orderNotes, paymentMethod } = createOrderDto;
 
     // Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu
     const queryRunner = this.dataSource.createQueryRunner();
@@ -81,6 +81,9 @@ export class OrderService {
         shippingAddress,
         shippingCountry: shippingDest.country,
         shippingProvince: shippingDest.province,
+        shippingCity,
+        shippingPostcode,
+        shippingUnit,
         orderNotes,
         paymentMethod,
         subTotal,

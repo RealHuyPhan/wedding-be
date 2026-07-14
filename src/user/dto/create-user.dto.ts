@@ -27,6 +27,22 @@ export class CreateUserDto {
     address?: string;
 
     @IsOptional()
+    @IsString()
+    shippingDestinationId?: string;
+
+    @IsOptional()
+    @IsString()
+    city?: string;
+
+    @IsOptional()
+    @IsString()
+    unit?: string;
+
+    @IsOptional()
+    @IsString()
+    postcode?: string;
+
+    @IsOptional()
     @Transform(({ value }: { value: string | undefined }) => value === '' ? null : value)
     @IsDateString()
     birthday?: Date;

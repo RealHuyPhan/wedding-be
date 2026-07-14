@@ -7,11 +7,11 @@ export class Product {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column()
-    label: string;
+    @Column({ default: '' })
+    product: string;
 
-    @Column()
-    value: string;
+    @Column({ unique: true })
+    productCode: string;
 
     @Column()
     description: string;

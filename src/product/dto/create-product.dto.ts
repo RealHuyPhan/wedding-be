@@ -4,7 +4,11 @@ import { Transform, Type } from "class-transformer";
 export class CreateProductDto {
     @IsString()
     @IsNotEmpty()
-    label: string;
+    product: string;
+
+    @IsString()
+    @IsOptional()
+    productCode?: string;
 
     @IsString()
     @IsNotEmpty()

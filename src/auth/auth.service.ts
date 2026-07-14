@@ -39,7 +39,13 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
-        name: user.name
+        name: user.name,
+        phone: user.phone,
+        address: user.address,
+        shippingDestinationId: user.shippingDestinationId,
+        city: user.city,
+        unit: user.unit,
+        postcode: user.postcode,
       }
     };
   }
@@ -58,7 +64,13 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
-        name: user.name
+        name: user.name,
+        phone: user.phone,
+        address: user.address,
+        shippingDestinationId: user.shippingDestinationId,
+        city: user.city,
+        unit: user.unit,
+        postcode: user.postcode,
       }
     };
   }
@@ -87,7 +99,13 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
-      name: user.name
+      name: user.name,
+      phone: user.phone,
+      address: user.address,
+      shippingDestinationId: user.shippingDestinationId,
+      city: user.city,
+      unit: user.unit,
+      postcode: user.postcode,
     };
   }
 

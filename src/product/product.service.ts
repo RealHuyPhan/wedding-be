@@ -7,7 +7,7 @@ import { Product } from './entities/product.entity';
 import { CategoryService } from 'src/category/category.service';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
-import { toSlug } from 'src/common/utils/string.util';
+import slugify from 'slugify';
 
 @Injectable()
 export class ProductService {
@@ -16,24 +16,52 @@ export class ProductService {
     private productRepository: Repository<Product>,
     private categoryService: CategoryService,
   ) { }
+
+  private async generateUniqueCode(name: string, excludeId?: string): Promise<string> {
+    const baseSlug = slugify(name, { lower: true, strict: true, locale: 'vi' });
+    let code = baseSlug || 'product';
+    let counter = 1;
+
+    while (true) {
+      const query = this.productRepository.createQueryBuilder('product')
+        .where('product.productCode = :code', { code });
+
+      if (excludeId) {
+        query.andWhere('product.id != :id', { id: excludeId });
+      }
+
+      const exists = await query.getOne();
+      if (!exists) {
+        return code;
+      }
+      code = `${baseSlug}-${counter}`;
+      counter++;
+    }
+  }
+
   async create(createProductDto: CreateProductDto) {
-    // Tách riêng thông tin danh mục (category) ra khỏi dữ liệu sản phẩm
     const { categoryIds, categoryId, ...productData } = createProductDto;
 
-    // Tự động sinh mã 'value' dựa trên 'label' do người dùng nhập
-    const value = toSlug(productData.label);
-    const product = this.productRepository.create({ ...productData, value });
+    let productCode = productData.productCode;
 
-    // Hỗ trợ linh hoạt: form có thể gửi lên mảng (categoryIds) hoặc chuỗi đơn (categoryId)
+    if (!productCode) {
+      productCode = await this.generateUniqueCode(productData.product);
+    } else {
+      productCode = slugify(productCode, { lower: true, strict: true, locale: 'vi' });
+      productCode = await this.generateUniqueCode(productCode);
+    }
+
+    productData.productCode = productCode;
+
+    const product = this.productRepository.create(productData);
+
     const finalCategoryIds = categoryIds || (categoryId ? [categoryId] : []);
 
-    // Nếu có chọn danh mục, tiến hành kiểm tra xem danh mục có tồn tại trong DB không
     if (finalCategoryIds.length > 0) {
       const foundCategories = await this.categoryService.findByIds(finalCategoryIds);
       if (foundCategories.length !== finalCategoryIds.length) {
         throw new BadRequestException('Category not found');
       }
-      // Gắn danh mục vào sản phẩm trước khi lưu
       product.categories = foundCategories;
     }
 
@@ -49,7 +77,7 @@ export class ProductService {
 
     if (search) {
       queryBuilder.where(
-        '(product.label ILIKE :search or product.value ILIKE :search or product.description ILIKE :search or product.tags ILIKE :search)',
+        '(product.product ILIKE :search or product.productCode ILIKE :search or product.description ILIKE :search or product.tags ILIKE :search)',
         { search: `%${search}%` }
       );
     }
@@ -67,7 +95,6 @@ export class ProductService {
     const hotItem = await this.productRepository.find({
       where: { isHotItem: true },
       take: 4,
-      // relation muốn lấy thêm ra category thì true
       relations: { categories: false },
     });
     return {
@@ -97,16 +124,13 @@ export class ProductService {
 
     const { categoryIds, categoryId, ...productData } = updateProductDto;
 
-    // Nếu có cập nhật tên (label), tiến hành cập nhật lại mã (value) tương ứng
-    if (productData.label) {
-      existingProduct.value = toSlug(productData.label);
+    if (productData.productCode) {
+      const newCode = slugify(productData.productCode, { lower: true, strict: true, locale: 'vi' });
+      productData.productCode = await this.generateUniqueCode(newCode, id);
     }
 
-    // Đổ dữ liệu mới vào entity hiện tại (những trường không gửi lên sẽ được giữ nguyên)
     Object.assign(existingProduct, productData);
 
-    // Xác định danh sách ID danh mục cần cập nhật
-    // Ưu tiên mảng categoryIds nếu có, nếu không thì dùng categoryId
     let finalCategoryIds: string[] | undefined = undefined;
     if (categoryIds !== undefined) {
       finalCategoryIds = categoryIds;
@@ -114,13 +138,10 @@ export class ProductService {
       finalCategoryIds = categoryId ? [categoryId] : [];
     }
 
-    // Nếu người dùng có gửi thông tin thay đổi danh mục (không bị undefined)
     if (finalCategoryIds !== undefined) {
       if (finalCategoryIds.length === 0) {
-        // Trường hợp người dùng bỏ chọn tất cả danh mục
         existingProduct.categories = [];
       } else {
-        // Tìm và liên kết với các danh mục mới
         const foundCategories = await this.categoryService.findByIds(finalCategoryIds);
         if (foundCategories.length !== finalCategoryIds.length) {
           throw new BadRequestException('Category not found');

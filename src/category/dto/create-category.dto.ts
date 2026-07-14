@@ -4,8 +4,11 @@ export class CreateCategoryDto {
 
     @IsString()
     @IsNotEmpty()
-    label: string;
+    category: string;
 
+    @IsString()
+    @IsOptional()
+    categoryCode?: string;
 
     @IsString()
     @IsNotEmpty()
