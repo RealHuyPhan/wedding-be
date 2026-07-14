@@ -57,9 +57,6 @@ export class Order {
     @Column({ nullable: true })
     shippingUnit: string;
 
-    @Column({ nullable: true })
-    orderNotes: string;
-
     // 3. THÔNG TIN THANH TOÁN & TRẠNG THÁI
     @Column({ type: 'decimal', precision: 12, scale: 2 })
     subTotal: number;

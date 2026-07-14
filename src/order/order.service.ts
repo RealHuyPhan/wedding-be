@@ -4,7 +4,7 @@ import { paginate } from '../common/utils/pagination.util';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, IsNull, FindOptionsWhere } from 'typeorm';
 import { OrderItem } from './entities/order-item.entity';
 import { Cart } from '../cart/entities/cart.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
@@ -20,7 +20,7 @@ export class OrderService {
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingDestinationId, shippingCity, shippingPostcode, shippingUnit, orderNotes, paymentMethod } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod } = createOrderDto;
 
     // Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu
     const queryRunner = this.dataSource.createQueryRunner();
@@ -56,8 +56,15 @@ export class OrderService {
       }
 
       // 2.5 Lấy thông tin Shipping Destination
+      const whereCondition: FindOptionsWhere<ShippingDestination> = { country: shippingCountry };
+      if (shippingProvince) {
+        whereCondition.province = shippingProvince;
+      } else {
+        whereCondition.province = IsNull();
+      }
+
       const shippingDest = await queryRunner.manager.findOne(ShippingDestination, {
-        where: { id: shippingDestinationId }
+        where: whereCondition
       });
 
       if (!shippingDest) {
@@ -79,12 +86,11 @@ export class OrderService {
         shippingName,
         shippingPhone,
         shippingAddress,
-        shippingCountry: shippingDest.country,
-        shippingProvince: shippingDest.province,
+        shippingCountry,
+        shippingProvince,
         shippingCity,
         shippingPostcode,
         shippingUnit,
-        orderNotes,
         paymentMethod,
         subTotal,
         shippingFee,
@@ -112,7 +118,7 @@ export class OrderService {
       // Commit transaction
       await queryRunner.commitTransaction();
 
-      return { statusCode: HttpStatus.CREATED, message: 'Order created successfully' };
+      return { statusCode: HttpStatus.CREATED, message: 'Order created successfully', data: { orderId: savedOrder.id } };
     } catch (err) {
       // Nếu có lỗi, rollback toàn bộ
       await queryRunner.rollbackTransaction();

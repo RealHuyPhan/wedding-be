@@ -16,7 +16,11 @@ export class CreateOrderDto {
 
   @IsString()
   @IsNotEmpty()
-  shippingDestinationId: string;
+  shippingCountry: string;
+
+  @IsString()
+  @IsOptional()
+  shippingProvince?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -29,10 +33,6 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   shippingUnit?: string;
-
-  @IsString()
-  @IsOptional()
-  orderNotes?: string;
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
