@@ -344,11 +344,25 @@ export class OrderService {
     return { statusCode: HttpStatus.OK, message: 'Shipping information updated successfully' };
   }
 
-  async remove(id: string) {
-    const order = await this.orderRepository.findOne({ where: { id } });
+  async remove(id: string, currentUser?: { id: string, role: string }) {
+    const order = await this.orderRepository.findOne({ 
+      where: { id },
+      relations: { user: true }
+    });
+    
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
+    if (currentUser && currentUser.role !== 'admin') {
+      if (!order.user || order.user.id !== currentUser.id) {
+        throw new ForbiddenException('You do not have permission to delete this order');
+      }
+      if (order.status !== OrderStatus.PENDING_PAYMENT) {
+        throw new BadRequestException('You can only delete orders that are pending payment');
+      }
+    }
+
     await this.orderRepository.remove(order);
     return { statusCode: HttpStatus.OK, message: 'Order deleted successfully' };
   }

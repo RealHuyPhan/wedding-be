@@ -16,9 +16,11 @@ import type { RawBodyRequest } from '@nestjs/common';
 import { Request } from 'express';
 import Stripe from 'stripe';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Order, OrderStatus } from '../order/entities/order.entity';
 
 @ApiExcludeController()
+@SkipThrottle() // Webhook từ Stripe không bị giới hạn rate limit
 @Controller('payment')
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);

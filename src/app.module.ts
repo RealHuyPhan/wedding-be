@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
@@ -17,6 +19,19 @@ import { PaymentModule } from './payment/payment.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // Rate Limiting: Chặn Brute Force & DDoS
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000,       // 1 giây
+        limit: 10,       // Tối đa 10 requests / giây
+      },
+      {
+        name: 'long',
+        ttl: 60000,      // 1 phút
+        limit: 200,      // Tối đa 200 requests / phút
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -25,8 +40,8 @@ import { PaymentModule } from './payment/payment.module';
           type: 'postgres',
           url: configService.get<string>('DATABASE_URL'),
           autoLoadEntities: true,
-          synchronize: true,
-          logging: true,
+          synchronize: configService.get<string>('NODE_ENV') !== 'production',
+          logging: configService.get<string>('NODE_ENV') !== 'production',
           ssl: {
             rejectUnauthorized: false,
           },
@@ -43,6 +58,13 @@ import { PaymentModule } from './payment/payment.module';
     PaymentModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Rate Limiting global: Đăng ký đúng cách qua DI Container
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

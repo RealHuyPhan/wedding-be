@@ -83,11 +83,10 @@ export class OrderController {
     return this.orderService.updateShippingInfo(id, req.user.id, updateOrderShippingDto);
   }
 
-  @ApiOperation({ summary: '[Admin] Delete order', description: 'Delete an order (Admin only)' })
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  @ApiOperation({ summary: 'Delete order', description: 'Delete a pending order (User) or any order (Admin)' })
+  @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.orderService.remove(id);
+  remove(@Param('id') id: string, @Request() req: { user: { id: string, role: string } }) {
+    return this.orderService.remove(id, req.user);
   }
 }
