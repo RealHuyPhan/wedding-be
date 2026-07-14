@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch, Query, Delete } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderAdminDto } from './dto/create-order-admin.dto';
+import { UpdateOrderAdminDto } from './dto/update-order-admin.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -51,5 +53,29 @@ export class OrderController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
     return this.orderService.updateStatus(id, updateOrderStatusDto.status);
+  }
+
+  @ApiOperation({ summary: '[Admin] Create new order manually', description: 'Create order manually by admin' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin')
+  @Post('admin')
+  createByAdmin(@Body() createOrderAdminDto: CreateOrderAdminDto) {
+    return this.orderService.createByAdmin(createOrderAdminDto);
+  }
+
+  @ApiOperation({ summary: '[Admin] Update order details', description: 'Update order shipping info and status (Admin only)' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin')
+  @Patch('admin/:id')
+  updateByAdmin(@Param('id') id: string, @Body() updateOrderAdminDto: UpdateOrderAdminDto) {
+    return this.orderService.updateByAdmin(id, updateOrderAdminDto);
+  }
+
+  @ApiOperation({ summary: '[Admin] Delete order', description: 'Delete an order (Admin only)' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin')
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.orderService.remove(id);
   }
 }

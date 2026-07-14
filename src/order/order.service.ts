@@ -2,12 +2,17 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { paginate } from '../common/utils/pagination.util';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderAdminDto } from './dto/create-order-admin.dto';
+import { UpdateOrderAdminDto } from './dto/update-order-admin.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Order, OrderStatus } from './entities/order.entity';
+import { Order, OrderStatus, PaymentMethod } from './entities/order.entity';
 import { Repository, DataSource, IsNull, FindOptionsWhere } from 'typeorm';
 import { OrderItem } from './entities/order-item.entity';
 import { Cart } from '../cart/entities/cart.entity';
+import { Product } from '../product/entities/product.entity';
+import { User } from '../user/entities/user.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
+import { PaymentService } from '../payment/payment.service';
 
 @Injectable()
 export class OrderService {
@@ -16,16 +21,25 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @InjectRepository(Cart)
     private cartRepository: Repository<Cart>,
-    private dataSource: DataSource
+    private dataSource: DataSource,
+    private paymentService: PaymentService,
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
     const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod } = createOrderDto;
 
+    if (paymentMethod === PaymentMethod.VIA_SOCIAL_MEDIA) {
+      throw new BadRequestException('This payment method is not available for online checkout.');
+    }
+
     // Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
+    // Khai báo ngoài try để dùng được sau khi transaction kết thúc (cho Stripe)
+    let savedOrder!: Order;
+    let orderItems!: OrderItem[];
 
     try {
       // 1. Lấy Cart của User kèm theo các Items
@@ -98,33 +112,49 @@ export class OrderService {
         status: OrderStatus.PENDING_PAYMENT,
       });
 
-      const savedOrder = await queryRunner.manager.save(newOrder);
+      savedOrder = await queryRunner.manager.save(newOrder);
 
       // 4. Tạo OrderItems
-      const orderItems = cart.items.map(item => {
+      orderItems = cart.items.map(item => {
         return queryRunner.manager.create(OrderItem, {
           order: savedOrder,
           product: item.product,
           quantity: item.quantity,
-          price: item.product.price, // Snapshot giá hiện tại
+          price: item.product.price,
         });
       });
 
       await queryRunner.manager.save(orderItems);
 
-      // 5. Xóa CartItems
-      await queryRunner.manager.remove(cart.items);
+      // 5. (Không xóa giỏ hàng ở đây nữa, giữ lại để nếu khách bấm Back vẫn còn. Sẽ xóa khi Webhook báo thanh toán thành công)
 
       // Commit transaction
       await queryRunner.commitTransaction();
 
-      return { statusCode: HttpStatus.CREATED, message: 'Order created successfully', data: { orderId: savedOrder.id } };
     } catch (err) {
-      // Nếu có lỗi, rollback toàn bộ
+      console.error('TRANSACTION ERROR:', err);
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
       await queryRunner.release();
+    }
+
+    // 6. Tạo Stripe Checkout Session (Sau khi transaction hoàn tất)
+    try {
+      const paymentUrl = await this.paymentService.createPaymentSession(
+        savedOrder,
+        orderItems,
+      );
+
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Order created successfully',
+        data: { orderId: savedOrder.id, paymentUrl },
+      };
+    } catch (stripeErr) {
+      console.error('STRIPE ERROR:', stripeErr);
+      const errorMessage = stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
+      throw new BadRequestException(`Stripe Error: ${errorMessage}`);
     }
   }
 
@@ -188,5 +218,96 @@ export class OrderService {
     order.status = status;
     await this.orderRepository.save(order);
     return { statusCode: HttpStatus.OK, message: 'Order status updated successfully' };
+  }
+
+  async createByAdmin(createOrderAdminDto: CreateOrderAdminDto) {
+    const { email, items, shippingFee, status, ...shippingInfo } = createOrderAdminDto;
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Tìm user theo email nếu có
+      let user: User | null = null;
+      if (email) {
+        user = await queryRunner.manager.findOne(User, { where: { email } });
+      }
+
+      let totalCents = 0;
+      const orderItemsToSave: { product: Product; quantity: number; price: number }[] = [];
+
+      // Tính tiền từng sản phẩm
+      for (const item of items) {
+        const product = await queryRunner.manager.findOne(Product, { where: { id: item.productId } });
+        if (!product) {
+          throw new NotFoundException(`Product with ID ${item.productId} not found`);
+        }
+
+        const priceInCents = Math.round(Number(product.price || 0) * 100);
+        totalCents += priceInCents * item.quantity;
+
+        orderItemsToSave.push({
+          product: product,
+          quantity: item.quantity,
+          price: product.price,
+        });
+      }
+
+      const shippingFeeCents = Math.round(Number(shippingFee || 0) * 100);
+      const totalAmountCents = totalCents + shippingFeeCents;
+
+      const newOrder = queryRunner.manager.create(Order, {
+        ...shippingInfo,
+        subTotal: totalCents / 100,
+        shippingFee: shippingFeeCents / 100,
+        totalAmount: totalAmountCents / 100,
+        status: status,
+        ...(user ? { user } : {}),
+      });
+
+      const savedOrder = await queryRunner.manager.save(newOrder);
+
+      const orderItems = orderItemsToSave.map(oi => queryRunner.manager.create(OrderItem, {
+        order: savedOrder,
+        ...oi,
+      }));
+
+      await queryRunner.manager.save(orderItems);
+
+      await queryRunner.commitTransaction();
+
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Order created successfully by admin',
+        data: { orderId: savedOrder.id },
+      };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async updateByAdmin(id: string, updateOrderAdminDto: UpdateOrderAdminDto) {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    Object.assign(order, updateOrderAdminDto);
+    await this.orderRepository.save(order);
+    
+    return { statusCode: HttpStatus.OK, message: 'Order updated successfully' };
+  }
+
+  async remove(id: string) {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    await this.orderRepository.remove(order);
+    return { statusCode: HttpStatus.OK, message: 'Order deleted successfully' };
   }
 }

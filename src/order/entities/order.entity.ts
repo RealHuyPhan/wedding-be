@@ -21,6 +21,7 @@ export enum OrderStatus {
 export enum PaymentMethod {
     MOMO = 'MOMO',
     CREDIT_CARD = 'CREDIT_CARD',
+    VIA_SOCIAL_MEDIA = 'VIA_SOCIAL_MEDIA',
 }
 
 @Entity('orders')

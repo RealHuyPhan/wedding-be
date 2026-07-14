@@ -10,6 +10,7 @@ import { ProductModule } from './product/product.module';
 import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
 import { ShippingModule } from './shipping/shipping.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -25,12 +26,12 @@ import { ShippingModule } from './shipping/shipping.module';
           url: configService.get<string>('DATABASE_URL'),
           autoLoadEntities: true,
           synchronize: true,
-          logging: true, // BẬT LOG: TypeORM sẽ in toàn bộ câu lệnh SQL ra terminal
+          logging: true,
           ssl: {
-            rejectUnauthorized: false // Bắt buộc phải có khi kết nối Supabase
-          }
-        }
-      }
+            rejectUnauthorized: false,
+          },
+        };
+      },
     }),
     UserModule,
     AuthModule,
@@ -39,8 +40,9 @@ import { ShippingModule } from './shipping/shipping.module';
     CartModule,
     OrderModule,
     ShippingModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
