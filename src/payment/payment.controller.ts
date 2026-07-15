@@ -18,6 +18,7 @@ import Stripe from 'stripe';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Order, OrderStatus } from '../order/entities/order.entity';
+import { EmailService } from 'src/email/email.service';
 
 @ApiExcludeController()
 @SkipThrottle() // Webhook từ Stripe không bị giới hạn rate limit
@@ -32,6 +33,7 @@ export class PaymentController {
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     private dataSource: DataSource,
+    private readonly emailService: EmailService,
   ) {
     this.stripe = new Stripe(
       this.configService.get<string>('STRIPE_SECRET_KEY') ?? '',
@@ -85,6 +87,15 @@ export class PaymentController {
         order.status = OrderStatus.PROCESSING;
         await this.orderRepository.save(order);
         this.logger.log(`Order ${orderId} status updated to PROCESSING`);
+        const orderWithItems = await this.orderRepository.findOne({
+          where: { id: orderId },
+          relations: { user: true, items: { product: true } },
+        })
+        if (orderWithItems) {
+          // Gửi song song, không await để không block webhook response
+          void this.emailService.sendOrderConfirmation(orderWithItems);
+          void this.emailService.sendNewOrderAlert(orderWithItems);
+        }
       } else {
         this.logger.warn(`Order ${orderId} not found in database`);
       }

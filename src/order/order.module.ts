@@ -11,13 +11,15 @@ import { Cart } from '../cart/entities/cart.entity';
 import { User } from '../user/entities/user.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
 import { PaymentModule } from '../payment/payment.module';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, Cart, CartItem, Product, User, ShippingDestination]),
     PaymentModule,
+    EmailModule
   ],
   controllers: [OrderController],
   providers: [OrderService],
 })
-export class OrderModule {}
+export class OrderModule { }

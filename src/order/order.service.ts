@@ -14,6 +14,7 @@ import { Product } from '../product/entities/product.entity';
 import { User } from '../user/entities/user.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
 import { PaymentService } from '../payment/payment.service';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class OrderService {
@@ -24,6 +25,7 @@ export class OrderService {
     private cartRepository: Repository<Cart>,
     private dataSource: DataSource,
     private paymentService: PaymentService,
+    private emailService: EmailService,
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
@@ -228,13 +230,17 @@ export class OrderService {
   }
 
   async updateStatus(id: string, status: OrderStatus) {
-    const order = await this.orderRepository.findOne({ where: { id } });
+    const order = await this.orderRepository.findOne({ where: { id }, relations: { user: true } });
     if (!order) {
       throw new NotFoundException('Order not found');
     }
 
+
     order.status = status;
     await this.orderRepository.save(order);
+
+    void this.emailService.sendStatusUpdate(order, status);
+
     return { statusCode: HttpStatus.OK, message: 'Order status updated successfully' };
   }
 
@@ -316,12 +322,12 @@ export class OrderService {
 
     Object.assign(order, updateOrderAdminDto);
     await this.orderRepository.save(order);
-    
+
     return { statusCode: HttpStatus.OK, message: 'Order updated successfully by admin' };
   }
 
   async updateShippingInfo(id: string, userId: string, updateOrderShippingDto: UpdateOrderShippingDto) {
-    const order = await this.orderRepository.findOne({ 
+    const order = await this.orderRepository.findOne({
       where: { id },
       relations: { user: true }
     });
@@ -340,16 +346,16 @@ export class OrderService {
 
     Object.assign(order, updateOrderShippingDto);
     await this.orderRepository.save(order);
-    
+
     return { statusCode: HttpStatus.OK, message: 'Shipping information updated successfully' };
   }
 
   async remove(id: string, currentUser?: { id: string, role: string }) {
-    const order = await this.orderRepository.findOne({ 
+    const order = await this.orderRepository.findOne({
       where: { id },
       relations: { user: true }
     });
-    
+
     if (!order) {
       throw new NotFoundException('Order not found');
     }
