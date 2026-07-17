@@ -24,7 +24,7 @@ export class StripeAdapter implements IPaymentGateway {
         currency: 'cad',
         product_data: {
           name: item.product?.product ?? 'Wedding Product',
-          images: item.product?.image ? [item.product.image] : [],
+          images: item.product?.images ? [item.product.images[0].url] : [],
         },
         unit_amount: Math.round(Number(item.price) * 100), // Đơn vị Cent
       },

@@ -1,5 +1,14 @@
 import { IsArray, IsBoolean, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 import { Transform, Type } from "class-transformer";
+import { ValidateNested } from "class-validator";
+
+export class ProductImageDto {
+    @IsString()
+    url: string;
+
+    @IsBoolean()
+    isCover: boolean;
+}
 
 export class CreateProductDto {
     @IsString()
@@ -33,9 +42,11 @@ export class CreateProductDto {
     @IsOptional()
     categoryId?: string;
 
-    @IsString()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ProductImageDto)
     @IsOptional()
-    image?: string;
+    images?: ProductImageDto[];
 
     @IsString()
     @IsOptional()
