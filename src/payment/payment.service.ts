@@ -15,4 +15,11 @@ export class PaymentService {
   async createPaymentSession(order: Order, items: OrderItem[]): Promise<string> {
     return this.stripeAdapter.createPaymentSession(order, items);
   }
+
+  async verifySession(sessionId: string): Promise<{ isPaid: boolean; orderId?: string }> {
+    if (this.stripeAdapter.verifySession) {
+      return this.stripeAdapter.verifySession(sessionId);
+    }
+    return { isPaid: false };
+  }
 }

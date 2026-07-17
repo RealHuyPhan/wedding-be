@@ -25,12 +25,18 @@ export class OrderController {
     return this.orderService.checkout(userId, createOrderDto);
   }
 
+  @ApiOperation({ summary: 'Verify Payment Session', description: 'Verify Stripe checkout session and update order status if paid' })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('verify-session')
+  verifySession(@Query('session_id') sessionId: string, @Request() req: { user: { id: string } }) {
+    return this.orderService.verifySession(sessionId, req.user.id);
+  }
+
   @ApiOperation({ summary: 'Get my orders', description: 'Get order history of the logged-in user' })
   @UseGuards(AuthGuard('jwt'))
-  @Get('my-orders') // Bỏ :userId ra khỏi URL
+  @Get('my-orders')
   findAllByUser(@Request() req: { user: { id: string } }) {
-    const userId = req.user.id; // Lấy ID an toàn từ Token
-    return this.orderService.findAllByUser(userId);
+    return this.orderService.findAllByUser(req.user.id);
   }
 
   @ApiOperation({ summary: '[Admin] Get all orders', description: 'Get all orders in the system (Admin only)' })

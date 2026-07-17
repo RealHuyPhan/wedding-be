@@ -179,6 +179,42 @@ export class OrderService {
     });
   }
 
+  async verifySession(sessionId: string, userId: string) {
+    const verification = await this.paymentService.verifySession(sessionId);
+    if (!verification.orderId) {
+      throw new BadRequestException('Invalid or expired payment session');
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: verification.orderId },
+      relations: { user: true }
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify ownership
+    if (!order.user || order.user.id !== userId) {
+      throw new ForbiddenException('You do not have permission to verify this order');
+    }
+
+    // Update status if paid and currently pending
+    if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
+      order.status = OrderStatus.PROCESSING;
+      await this.orderRepository.save(order);
+      void this.emailService.sendStatusUpdate(order, OrderStatus.PROCESSING);
+    }
+
+    return { 
+      statusCode: HttpStatus.OK, 
+      message: 'Session verified', 
+      isPaid: verification.isPaid,
+      orderId: order.id,
+      status: order.status
+    };
+  }
+
   async findOne(id: string, currentUser?: { id: string, role: string }) {
     const order = await this.orderRepository.findOne({
       where: { id },
