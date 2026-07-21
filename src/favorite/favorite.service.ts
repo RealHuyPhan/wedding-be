@@ -1,26 +1,44 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Favorite } from './entities/favorite.entity';
+import { Repository } from 'typeorm';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
-import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 
 @Injectable()
 export class FavoriteService {
-  create(createFavoriteDto: CreateFavoriteDto) {
-    return 'This action adds a new favorite';
+  constructor(
+    @InjectRepository(Favorite)
+    private favoriteRepository: Repository<Favorite>
+  ) { }
+
+  async getFavorites(userId: string) {
+    const favorite = await this.favoriteRepository.find({
+      where: { userId: userId },
+      relations: {
+        product: true
+      },
+    });
+    return favorite;
   }
 
-  findAll() {
-    return `This action returns all favorite`;
+  async addToFavorite(userId: string, createFavoriteDto: CreateFavoriteDto) {
+    const existingFavorite = await this.favoriteRepository.findOne({
+      where: { userId: userId, productId: createFavoriteDto.productId },
+    });
+
+    if (existingFavorite) {
+      return existingFavorite;
+    }
+
+    const newFavorite = this.favoriteRepository.create({
+      userId: userId,
+      productId: createFavoriteDto.productId,
+    });
+    return this.favoriteRepository.save(newFavorite);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} favorite`;
+  async removeFromFavorite(userId: string, productId: string) {
+    return this.favoriteRepository.delete({ productId: productId, userId: userId });
   }
 
-  update(id: number, updateFavoriteDto: UpdateFavoriteDto) {
-    return `This action updates a #${id} favorite`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} favorite`;
-  }
 }

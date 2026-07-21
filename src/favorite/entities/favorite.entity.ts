@@ -7,18 +7,18 @@ export class Favorite {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ name: 'user_id' })
-    user_id: string;
+    @Column({ name: 'userId' })
+    userId: string;
 
-    @Column({ name: 'product_id' })
-    product_id: string;
+    @Column({ name: 'productId' })
+    productId: string;
 
     @ManyToOne(() => User, (user) => user.favorites, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'user_id' })
+    @JoinColumn({ name: 'userId' })
     user: User;
 
     @ManyToOne(() => Product, (product) => product.favorites, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'product_id' })
+    @JoinColumn({ name: 'productId' })
     product: Product;
 
     @CreateDateColumn()
