@@ -39,6 +39,9 @@ export class User {
     @Column({ default: 'user' })
     role: string;
 
+    @Column({ default: 'local' })
+    provider: string;
+
     @Column({ nullable: true })
     birthday: Date;
 

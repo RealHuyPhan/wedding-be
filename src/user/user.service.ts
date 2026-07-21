@@ -60,7 +60,7 @@ export class UserService {
   }
 
   async createGoogleUser(email: string, name: string) {
-    const user = this.userRepository.create({ email, name });
+    const user = this.userRepository.create({ email, name, provider: 'google' });
     const savedUser = await this.userRepository.save(user);
     delete (savedUser as Partial<User>).password;
     return savedUser;

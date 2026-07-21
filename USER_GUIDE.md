@@ -19,9 +19,10 @@ Tài liệu này mô tả đầy đủ kiến trúc, luồng hoạt động, cá
 9. [Order Module — Đơn hàng](#9-order-module--đơn-hàng)
 10. [Shipping Module — Cấu hình vùng vận chuyển](#10-shipping-module--cấu-hình-vùng-vận-chuyển)
 11. [Payment Module — Tích hợp Stripe](#11-payment-module--tích-hợp-stripe)
-12. [Bảo mật (Security Hardening)](#12-bảo-mật-security-hardening)
-13. [Chuẩn Phân trang & Tìm kiếm](#13-chuẩn-phân-trang--tìm-kiếm)
-14. [Swagger API Docs](#14-swagger-api-docs)
+12. [Favorite Module — Quản lý Yêu thích](#12-favorite-module--quản-lý-yêu-thích)
+13. [Bảo mật (Security Hardening)](#13-bảo-mật-security-hardening)
+14. [Chuẩn Phân trang & Tìm kiếm](#14-chuẩn-phân-trang--tìm-kiếm)
+15. [Swagger API Docs](#15-swagger-api-docs)
 
 ---
 
@@ -59,6 +60,7 @@ be/src/
 | `OrderModule` | `/api/order` | Checkout, Lịch sử đơn hàng, CRUD admin |
 | `ShippingModule` | `/api/shipping` | Cấu hình vùng giao hàng (Admin) |
 | `PaymentModule` | `/api/payment` | Webhook từ Stripe |
+| `FavoriteModule` | `/api/favorite` | Danh sách sản phẩm yêu thích (Wishlist) |
 
 ### Biến môi trường cần thiết
 
@@ -247,6 +249,12 @@ if (currentUser.role !== 'admin' && updateUserDto.role) {
 ```
 
 **Kiểm tra trùng Email/Phone:** Ném `ConflictException` (409) kịp thời.
+
+### Phân biệt tài khoản Auth Provider
+
+Hệ thống hỗ trợ đăng nhập qua Google OAuth. Trong `user.entity.ts`, trường `provider` được sử dụng:
+- `provider: 'local'` (mặc định): Các tài khoản tạo qua form Đăng ký (có sử dụng mật khẩu).
+- `provider: 'google'`: Tài khoản tự động tạo qua luồng Google (không có mật khẩu). Dựa vào cờ này, Frontend sẽ chủ động ẩn chức năng Đổi mật khẩu.
 
 ---
 
@@ -493,7 +501,26 @@ if (event.type === 'checkout.session.completed') {
 
 ---
 
-## 12. Bảo mật (Security Hardening)
+## 12. Favorite Module — Quản lý Yêu thích
+
+### API Endpoints
+
+| Method | Path | Guard | Mô tả |
+|---|---|---|---|
+| `GET` | `/api/favorite` | User | Xem danh sách yêu thích của bản thân |
+| `POST` | `/api/favorite` | User | Thêm sản phẩm vào danh sách |
+| `DELETE` | `/api/favorite/:productId` | User | Xoá sản phẩm khỏi danh sách |
+
+### Tối ưu hoá Dữ liệu (Select Query)
+
+Để tránh tình trạng "Data Over-fetching", API `GET /api/favorite` sử dụng TypeORM `select` để trích xuất khắt khe các trường thật sự cần thiết cho việc render trên UI (ID, Tên, Giá, Tags, Ảnh Cover), loại bỏ hoàn toàn các trường dữ liệu nặng (Description, cấu hình in ấn, giảm giá...).
+Việc này mang lại hiệu suất đáng kể:
+- **Giảm I/O Database:** Tăng tốc độ đọc dữ liệu từ ổ cứng / RAM.
+- **Giảm Network Payload:** Tiết kiệm vài chục KB JSON cho mỗi sản phẩm trả về, vô cùng hiệu quả với User có wishlist dài.
+
+---
+
+## 13. Bảo mật (Security Hardening)
 
 Hệ thống được thiết kế theo mô hình **Defense in Depth** — nhiều lớp bảo vệ độc lập:
 
@@ -538,7 +565,7 @@ Không ai có thể nhét `{ isAdmin: true, role: "admin" }` vào payload.
 
 ---
 
-## 13. Chuẩn Phân trang & Tìm kiếm
+## 14. Chuẩn Phân trang & Tìm kiếm
 
 ### DTO Request
 
@@ -576,7 +603,7 @@ const [items, totalElements] = await queryBuilder.getManyAndCount();
 
 ---
 
-## 14. Swagger API Docs
+## 15. Swagger API Docs
 
 Tài liệu API tự động có tại: **`http://localhost:3001/api/docs`**
 
@@ -586,4 +613,4 @@ Tài liệu API tự động có tại: **`http://localhost:3001/api/docs`**
 
 ---
 
-*Tài liệu được cập nhật lần cuối: 2026-07-14*
+*Tài liệu được cập nhật lần cuối: 2026-07-21*
