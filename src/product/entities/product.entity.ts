@@ -1,6 +1,7 @@
 import { Category } from "src/category/entities/category.entity";
 import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { CartItem } from "src/cart/entities/cart-item.entity";
+import { Favorite } from "src/favorite/entities/favorite.entity";
 
 @Entity('products')
 export class Product {
@@ -59,4 +60,6 @@ export class Product {
     @OneToMany(() => CartItem, (cartItem) => cartItem.product)
     cartItems: CartItem[];
 
+    @OneToMany(() => Favorite, (favorite) => favorite.product)
+    favorites: Favorite[];
 }

@@ -2,6 +2,7 @@ import { BeforeInsert, BeforeUpdate, Column, Entity, OneToMany, OneToOne, Primar
 import * as bcrypt from 'bcrypt';
 import { Cart } from "../../cart/entities/cart.entity";
 import { Order } from "../../order/entities/order.entity";
+import { Favorite } from "../../favorite/entities/favorite.entity";
 
 @Entity('users')
 export class User {
@@ -50,6 +51,9 @@ export class User {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     @OneToMany(() => Order, (order: Order) => order.user)
     orders: Order[];
+
+    @OneToMany(() => Favorite, (favorite) => favorite.user)
+    favorites: Favorite[];
 
     @BeforeInsert()
     @BeforeUpdate()
