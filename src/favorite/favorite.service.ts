@@ -17,6 +17,20 @@ export class FavoriteService {
       relations: {
         product: true
       },
+      select: {
+        id: true,
+        userId: true,
+        productId: true,
+        createdAt: true,
+        product: {
+          id: true,
+          product: true,
+          productCode: true,
+          tags: true,
+          price: true,
+          images: true
+        }
+      }
     });
     return favorite;
   }
