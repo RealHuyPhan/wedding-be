@@ -343,4 +343,43 @@ export class EmailService {
         }
     }
 
+    async sendFraudCancellationEmail(order: Order): Promise<void> {
+        if (!order.user?.email) return;
+
+        const { id, shippingName } = order;
+
+        const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333">
+      <h2 style="color:#5c0a1a">🚫 Order Cancelled & Refunded</h2>
+      <p>Hi <strong>${shippingName}</strong>,</p>
+      <p>We noticed that you selected "Debit Card" during checkout to waive the service fee, but a Credit Card was used for the actual payment.</p>
+      <p>As a result, your order <strong>#${id.slice(0, 8).toUpperCase()}</strong> has been automatically cancelled and a full refund has been issued to your card.</p>
+      <p>Please place a new order and ensure that the payment method selected on our website matches the card type used for payment.</p>
+      <p>If you have any questions, feel free to reply to this email.</p>
+      <p>
+        <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/checkout"
+           style="background:#5c0a1a;color:white;padding:10px 20px;text-decoration:none;border-radius:4px">
+          Return to Checkout
+        </a>
+      </p>
+    </div>
+  `;
+
+        try {
+            const { data, error } = await this.resend.emails.send({
+                from: 'onboarding@resend.dev',
+                to: order.user.email,
+                subject: `Order Cancelled - Payment Method Mismatch`,
+                html,
+            });
+            if (error) {
+                this.logger.error(`Failed to send fraud cancellation email to ${order.user.email}: ${JSON.stringify(error)}`);
+            } else {
+                this.logger.log(`Fraud cancellation email sent to ${order.user.email} — id: ${data?.id}`);
+            }
+        } catch (err) {
+            this.logger.error(`Failed to send fraud cancellation email: ${String(err)}`);
+        }
+    }
+
 }

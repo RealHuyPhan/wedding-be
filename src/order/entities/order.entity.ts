@@ -16,11 +16,13 @@ export enum OrderStatus {
     SHIPPING = 'SHIPPING',
     DELIVERED = 'DELIVERED',
     COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED',
 }
 
 export enum PaymentMethod {
     MOMO = 'MOMO',
     CREDIT_CARD = 'CREDIT_CARD',
+    DEBIT_CARD = 'DEBIT_CARD',
     VIA_SOCIAL_MEDIA = 'VIA_SOCIAL_MEDIA',
 }
 
@@ -64,6 +66,9 @@ export class Order {
 
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     shippingFee: number;
+
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+    serviceFee: number;
 
     @Column({ type: 'decimal', precision: 12, scale: 2 })
     totalAmount: number;

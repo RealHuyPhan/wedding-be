@@ -45,6 +45,20 @@ export class StripeAdapter implements IPaymentGateway {
       });
     }
 
+    // Thêm phí dịch vụ (Service Fee) nếu có
+    if (Number(order.serviceFee) > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'cad',
+          product_data: {
+            name: 'Service Fee',
+          },
+          unit_amount: Math.round(Number(order.serviceFee) * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await this.stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,

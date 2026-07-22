@@ -90,11 +90,28 @@ export class OrderService {
 
       // Đưa phí ship về dạng Cent để cộng cho an toàn
       const shippingFeeCents = Math.round(Number(shippingDest.shippingFee || 0) * 100);
-      const totalAmountCents = totalCents + shippingFeeCents;
+
+      // Tính Service Fee theo vùng
+      let serviceFeeCents = 0;
+      const prov = shippingDest.province?.toLowerCase() || '';
+
+      const NO_FEE_REGIONS = ['qc', 'quebec', 'ct', 'connecticut', 'me', 'maine', 'ma', 'massachusetts', 'pr', 'puerto rico'];
+      const TWO_PERCENT_REGIONS = ['co', 'colorado', 'ok', 'oklahoma'];
+
+      if (paymentMethod === PaymentMethod.DEBIT_CARD || NO_FEE_REGIONS.includes(prov)) {
+        serviceFeeCents = 0;
+      } else if (TWO_PERCENT_REGIONS.includes(prov)) {
+        serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.020);
+      } else {
+        serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.024);
+      }
+
+      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents;
 
       // Trả lại định dạng CAD chuẩn
       const subTotal = totalCents / 100;
       const shippingFee = shippingFeeCents / 100;
+      const serviceFee = serviceFeeCents / 100;
       const totalAmount = totalAmountCents / 100;
 
       // 3. Tạo Order
@@ -111,6 +128,7 @@ export class OrderService {
         paymentMethod,
         subTotal,
         shippingFee,
+        serviceFee,
         totalAmount,
         status: OrderStatus.PENDING_PAYMENT,
       });
@@ -199,12 +217,10 @@ export class OrderService {
       throw new ForbiddenException('You do not have permission to verify this order');
     }
 
-    // Update status if paid and currently pending
-    if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
-      order.status = OrderStatus.PROCESSING;
-      await this.orderRepository.save(order);
-      void this.emailService.sendStatusUpdate(order, OrderStatus.PROCESSING);
-    }
+    // Do not update status here to avoid race conditions with Webhook.
+    // The Stripe Webhook (payment.controller.ts) is strictly responsible for updating the status,
+    // running fraud checks, and sending emails.
+    // We just return the current status.
 
     return { 
       statusCode: HttpStatus.OK, 
@@ -315,12 +331,29 @@ export class OrderService {
       }
 
       const shippingFeeCents = Math.round(Number(shippingFee || 0) * 100);
-      const totalAmountCents = totalCents + shippingFeeCents;
+
+      // Logic tính phí tương tự cho Admin
+      let serviceFeeCents = 0;
+      const prov = shippingInfo.shippingProvince?.toLowerCase() || '';
+
+      const NO_FEE_REGIONS = ['qc', 'quebec', 'ct', 'connecticut', 'me', 'maine', 'ma', 'massachusetts', 'pr', 'puerto rico'];
+      const TWO_PERCENT_REGIONS = ['co', 'colorado', 'ok', 'oklahoma'];
+
+      if (NO_FEE_REGIONS.includes(prov)) {
+        serviceFeeCents = 0;
+      } else if (TWO_PERCENT_REGIONS.includes(prov)) {
+        serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.020);
+      } else {
+        serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.024);
+      }
+
+      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents;
 
       const newOrder = queryRunner.manager.create(Order, {
         ...shippingInfo,
         subTotal: totalCents / 100,
         shippingFee: shippingFeeCents / 100,
+        serviceFee: serviceFeeCents / 100,
         totalAmount: totalAmountCents / 100,
         status: status,
         ...(user ? { user } : {}),

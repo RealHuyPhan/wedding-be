@@ -17,7 +17,7 @@ import { Request } from 'express';
 import Stripe from 'stripe';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { Order, OrderStatus } from '../order/entities/order.entity';
+import { Order, OrderStatus, PaymentMethod } from '../order/entities/order.entity';
 import { EmailService } from 'src/email/email.service';
 
 @ApiExcludeController()
@@ -84,17 +84,58 @@ export class PaymentController {
       const order = await this.orderRepository.findOne({ where: { id: orderId }, relations: { user: true } });
 
       if (order) {
-        order.status = OrderStatus.PROCESSING;
-        await this.orderRepository.save(order);
-        this.logger.log(`Order ${orderId} status updated to PROCESSING`);
-        const orderWithItems = await this.orderRepository.findOne({
-          where: { id: orderId },
-          relations: { user: true, items: { product: true } },
-        })
-        if (orderWithItems) {
-          // Gửi song song, không await để không block webhook response
-          void this.emailService.sendOrderConfirmation(orderWithItems);
-          void this.emailService.sendNewOrderAlert(orderWithItems);
+        // --- FRAUD DETECTION LOGIC ---
+        try {
+          if (order.paymentMethod === PaymentMethod.DEBIT_CARD && session.payment_intent) {
+            const paymentIntent = await this.stripe.paymentIntents.retrieve(session.payment_intent as string, { expand: ['payment_method'] });
+            const paymentMethodData = paymentIntent.payment_method as Stripe.PaymentMethod;
+            const fundingType = paymentMethodData?.card?.funding;
+            
+            if (fundingType === 'credit') {
+              this.logger.warn(`Fraud detected for order ${orderId}: Used Credit Card for Debit Card payment method.`);
+              
+              // Hoàn tiền
+              await this.stripe.refunds.create({
+                payment_intent: paymentIntent.id,
+                reason: 'fraudulent',
+              });
+              
+              // Hủy đơn
+              order.status = OrderStatus.CANCELLED;
+              await this.orderRepository.save(order);
+              
+              const orderWithItems = await this.orderRepository.findOne({
+                where: { id: orderId },
+                relations: { user: true, items: { product: true } },
+              });
+              if (orderWithItems) {
+                // Gửi email báo hủy đơn
+                void this.emailService.sendFraudCancellationEmail(orderWithItems);
+              }
+              return { received: true, status: 'cancelled_due_to_fraud' };
+            }
+          }
+        } catch (fraudErr) {
+          this.logger.error(`Error during fraud check for order ${orderId}: ${String(fraudErr)}`);
+          // Tiếp tục xử lý nếu lỗi API Stripe để không làm kẹt đơn hàng
+        }
+        // --- END FRAUD DETECTION LOGIC ---
+
+        if (order.status === OrderStatus.PENDING_PAYMENT) {
+          order.status = OrderStatus.PROCESSING;
+          await this.orderRepository.save(order);
+          this.logger.log(`Order ${orderId} status updated to PROCESSING`);
+          const orderWithItems = await this.orderRepository.findOne({
+            where: { id: orderId },
+            relations: { user: true, items: { product: true } },
+          });
+          if (orderWithItems) {
+            // Gửi song song, không await để không block webhook response
+            void this.emailService.sendOrderConfirmation(orderWithItems);
+            void this.emailService.sendNewOrderAlert(orderWithItems);
+          }
+        } else {
+          this.logger.log(`Order ${orderId} is already processed or cancelled. Ignoring webhook status update.`);
         }
       } else {
         this.logger.warn(`Order ${orderId} not found in database`);
