@@ -217,10 +217,22 @@ export class OrderService {
       throw new ForbiddenException('You do not have permission to verify this order');
     }
 
-    // Do not update status here to avoid race conditions with Webhook.
-    // The Stripe Webhook (payment.controller.ts) is strictly responsible for updating the status,
-    // running fraud checks, and sending emails.
-    // We just return the current status.
+    // Fallback: Update status if paid and currently pending.
+    // This is crucial for Local Development where Stripe Webhooks cannot reach the server,
+    // or if the webhook is delayed. The Webhook will check the status and skip duplicate emails.
+    if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
+      order.status = OrderStatus.PROCESSING;
+      await this.orderRepository.save(order);
+      
+      const orderWithItems = await this.orderRepository.findOne({
+        where: { id: order.id },
+        relations: { user: true, items: { product: true } }
+      });
+      if (orderWithItems) {
+        void this.emailService.sendOrderConfirmation(orderWithItems);
+        void this.emailService.sendNewOrderAlert(orderWithItems);
+      }
+    }
 
     return { 
       statusCode: HttpStatus.OK, 
