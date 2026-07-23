@@ -20,9 +20,10 @@ Tài liệu này mô tả đầy đủ kiến trúc, luồng hoạt động, cá
 10. [Shipping Module — Cấu hình vùng vận chuyển](#10-shipping-module--cấu-hình-vùng-vận-chuyển)
 11. [Payment Module — Tích hợp Stripe](#11-payment-module--tích-hợp-stripe)
 12. [Favorite Module — Quản lý Yêu thích](#12-favorite-module--quản-lý-yêu-thích)
-13. [Bảo mật (Security Hardening)](#13-bảo-mật-security-hardening)
-14. [Chuẩn Phân trang & Tìm kiếm](#14-chuẩn-phân-trang--tìm-kiếm)
-15. [Swagger API Docs](#15-swagger-api-docs)
+13. [Email Module — Gửi Email Transactional](#13-email-module--gửi-email-transactional)
+14. [Bảo mật (Security Hardening)](#14-bảo-mật-security-hardening)
+15. [Chuẩn Phân trang & Tìm kiếm](#15-chuẩn-phân-trang--tìm-kiếm)
+16. [Swagger API Docs](#16-swagger-api-docs)
 
 ---
 
@@ -61,6 +62,7 @@ be/src/
 | `ShippingModule` | `/api/shipping` | Cấu hình vùng giao hàng (Admin) |
 | `PaymentModule` | `/api/payment` | Webhook từ Stripe |
 | `FavoriteModule` | `/api/favorite` | Danh sách sản phẩm yêu thích (Wishlist) |
+| `EmailModule` | *(Internal)* | Gửi email transactional (Resend API) |
 
 ### Biến môi trường cần thiết
 
@@ -72,6 +74,8 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+ADMIN_EMAIL=admin@example.com
 FRONTEND_URL=http://localhost:3000
 NODE_ENV=development
 PORT=3001
@@ -511,6 +515,10 @@ if (event.type === 'checkout.session.completed') {
 | `POST` | `/api/favorite` | User | Thêm sản phẩm vào danh sách |
 | `DELETE` | `/api/favorite/:productId` | User | Xoá sản phẩm khỏi danh sách |
 
+### Bảo mật dữ liệu (Data Isolation)
+
+Tương tự Cart, hệ thống luôn lấy `userId` trực tiếp từ JWT payload (`req.user.sub`) khi thêm, xoá hoặc truy vấn Favorites. Query Repository được gắn `where: { user: { id: userId } }` đảm bảo người dùng chỉ tương tác được với danh sách yêu thích của chính mình.
+
 ### Tối ưu hoá Dữ liệu (Select Query)
 
 Để tránh tình trạng "Data Over-fetching", API `GET /api/favorite` sử dụng TypeORM `select` để trích xuất khắt khe các trường thật sự cần thiết cho việc render trên UI (ID, Tên, Giá, Tags, Ảnh Cover), loại bỏ hoàn toàn các trường dữ liệu nặng (Description, cấu hình in ấn, giảm giá...).
@@ -520,7 +528,31 @@ Việc này mang lại hiệu suất đáng kể:
 
 ---
 
-## 13. Bảo mật (Security Hardening)
+## 13. Email Module — Gửi Email Transactional
+
+`EmailModule` chịu trách nhiệm giao tiếp với **Resend API** để gửi email tự động dựa trên các sự kiện của hệ thống (Event-driven).
+
+### Các loại Email hỗ trợ
+
+1. **Order Confirmation:**
+   - **Trigger:** Gửi tự động cho Khách hàng khi họ đặt hàng thành công (Stripe Webhook xác nhận hoặc dùng phương thức thanh toán trả sau/miễn phí).
+   - **Nội dung:** Chứa thông tin chi tiết các mặt hàng, giá tiền, địa chỉ giao hàng, sử dụng template HTML thiết kế riêng (brand Duyen).
+2. **New Order Alert:**
+   - **Trigger:** Gửi cho Quản trị viên (địa chỉ `ADMIN_EMAIL`) ngay sau khi có đơn hàng mới.
+   - **Nội dung:** Thông báo nhanh về đơn hàng mới và doanh thu thu được.
+3. **Status Update:**
+   - **Trigger:** Gửi cho Khách hàng khi Admin cập nhật trạng thái đơn hàng (sang `PROCESSING`, `SHIPPING`, `DELIVERED`, `COMPLETED`).
+   - **Nội dung:** Tùy thuộc vào trạng thái mới, cung cấp cập nhật tiến độ vận chuyển cho khách.
+4. **Fraud Cancellation (Bảo mật thanh toán):**
+   - **Trigger:** Gửi khi hệ thống phát hiện Khách hàng cố tình chọn "Debit Card" (không phí) nhưng lại dùng Credit Card tại cổng Stripe.
+   - **Hành động:** Thông báo đơn hàng đã bị hủy tự động và sẽ được hoàn tiền lại vào thẻ.
+
+### Cấu trúc và Kiến trúc
+`EmailModule` hoạt động nội bộ (không có API Controller mở ra bên ngoài) và được inject vào `OrderService`, `PaymentController` để được trigger tự động tại các thời điểm quan trọng.
+
+---
+
+## 14. Bảo mật (Security Hardening)
 
 Hệ thống được thiết kế theo mô hình **Defense in Depth** — nhiều lớp bảo vệ độc lập:
 
@@ -565,7 +597,7 @@ Không ai có thể nhét `{ isAdmin: true, role: "admin" }` vào payload.
 
 ---
 
-## 14. Chuẩn Phân trang & Tìm kiếm
+## 15. Chuẩn Phân trang & Tìm kiếm
 
 ### DTO Request
 
@@ -603,7 +635,7 @@ const [items, totalElements] = await queryBuilder.getManyAndCount();
 
 ---
 
-## 15. Swagger API Docs
+## 16. Swagger API Docs
 
 Tài liệu API tự động có tại: **`http://localhost:3001/api/docs`**
 
@@ -613,4 +645,4 @@ Tài liệu API tự động có tại: **`http://localhost:3001/api/docs`**
 
 ---
 
-*Tài liệu được cập nhật lần cuối: 2026-07-21*
+*Tài liệu được cập nhật lần cuối: 2026-07-22*
