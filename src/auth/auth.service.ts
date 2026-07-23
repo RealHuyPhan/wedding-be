@@ -46,6 +46,8 @@ export class AuthService {
         city: user.city,
         unit: user.unit,
         postcode: user.postcode,
+        birthday: user.birthday,
+        gender: user.gender,
       }
     };
   }
@@ -71,6 +73,8 @@ export class AuthService {
         city: user.city,
         unit: user.unit,
         postcode: user.postcode,
+        birthday: user.birthday,
+        gender: user.gender,
       }
     };
   }
@@ -106,6 +110,8 @@ export class AuthService {
       city: user.city,
       unit: user.unit,
       postcode: user.postcode,
+      birthday: user.birthday,
+      gender: user.gender,
     };
   }
 
