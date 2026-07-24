@@ -200,6 +200,8 @@ POST /api/auth/login { email, password }
   → Trả về { access_token, user }
 ```
 
+> **Lưu ý:** Object `user` trả về từ API `/api/auth/login`, `/api/auth/register` và `/api/auth/me` nay đã bao gồm đầy đủ toàn bộ thông tin Profile: `name`, `phone`, `address`, `city`, `unit`, `postcode`, `birthday`, `gender`, `shippingDestinationId`. Phục vụ việc tự động điền form ở Frontend mà không cần gọi thêm API phụ.
+
 ### Luồng Google OAuth2
 
 ```
@@ -226,7 +228,7 @@ GET /api/auth/google
 | `POST` | `/api/user` | Admin | Tạo tài khoản thủ công |
 | `GET` | `/api/user` | Admin | Danh sách users (có phân trang & tìm kiếm) |
 | `GET` | `/api/user/:id` | Admin | Chi tiết user |
-| `PATCH` | `/api/user/:id` | User/Admin | Cập nhật profile |
+| `PATCH` | `/api/user/:id` | User/Admin | Cập nhật profile (Hỗ trợ: `name, phone, address, city, unit, postcode, birthday, gender, shippingDestinationId`) |
 | `DELETE` | `/api/user/:id` | Admin | Xoá tài khoản |
 
 ### Bảo mật (`user.service.ts`)
@@ -645,4 +647,4 @@ Tài liệu API tự động có tại: **`http://localhost:3001/api/docs`**
 
 ---
 
-*Tài liệu được cập nhật lần cuối: 2026-07-22*
+*Tài liệu được cập nhật lần cuối: 2026-07-24*

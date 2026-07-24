@@ -14,6 +14,8 @@ import { OrderModule } from './order/order.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { PaymentModule } from './payment/payment.module';
 import { FavoriteModule } from './favorite/favorite.module';
+import { BlogModule } from './blog/blog.module';
+import { TopicModule } from './topic/topic.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { FavoriteModule } from './favorite/favorite.module';
     ShippingModule,
     PaymentModule,
     FavoriteModule,
+    BlogModule,
+    TopicModule,
   ],
   controllers: [AppController],
   providers: [

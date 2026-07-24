@@ -6,7 +6,7 @@ import { Category } from './entities/category.entity';
 import { Repository, In } from 'typeorm';
 import { PageOptionsDto } from 'src/common/dto/page-options.dto';
 import { paginate } from 'src/common/utils/pagination.util';
-import slugify from 'slugify';
+import { generateUniqueSlug } from 'src/common/utils/slug.util';
 
 @Injectable()
 export class CategoryService {
@@ -15,38 +15,15 @@ export class CategoryService {
     private readonly categoryRepository: Repository<Category>,
   ) { }
 
-  private async generateUniqueCode(name: string, excludeId?: string): Promise<string> {
-    const baseSlug = slugify(name, { lower: true, strict: true, locale: 'vi' });
-    let code = baseSlug || 'category';
-    let counter = 1;
-
-    while (true) {
-      const query = this.categoryRepository.createQueryBuilder('category')
-        .where('category.categoryCode = :code', { code });
-
-      if (excludeId) {
-        query.andWhere('category.id != :id', { id: excludeId });
-      }
-
-      const exists = await query.getOne();
-      if (!exists) {
-        return code;
-      }
-      code = `${baseSlug}-${counter}`;
-      counter++;
-    }
-  }
-
   async create(createCategoryDto: CreateCategoryDto) {
     let categoryCode = createCategoryDto.categoryCode;
 
     // Nếu frontend không truyền categoryCode hoặc ta muốn ghi đè, tự động sinh từ tên
     if (!categoryCode) {
-      categoryCode = await this.generateUniqueCode(createCategoryDto.category);
+      categoryCode = await generateUniqueSlug(this.categoryRepository, createCategoryDto.category, 'categoryCode', undefined, 'category');
     } else {
       // Nếu có truyền, đảm bảo format chuẩn slug và duy nhất
-      categoryCode = slugify(categoryCode, { lower: true, strict: true, locale: 'vi' });
-      categoryCode = await this.generateUniqueCode(categoryCode);
+      categoryCode = await generateUniqueSlug(this.categoryRepository, categoryCode, 'categoryCode', undefined, 'category');
     }
 
     createCategoryDto.categoryCode = categoryCode;
@@ -103,11 +80,10 @@ export class CategoryService {
 
     if (updateCategoryDto.categoryCode) {
       // Nếu có sửa mã thì slugify và kiểm tra trùng lặp
-      const newCode = slugify(updateCategoryDto.categoryCode, { lower: true, strict: true, locale: 'vi' });
-      updateCategoryDto.categoryCode = await this.generateUniqueCode(newCode, id);
+      updateCategoryDto.categoryCode = await generateUniqueSlug(this.categoryRepository, updateCategoryDto.categoryCode, 'categoryCode', id, 'category');
     } else if (updateCategoryDto.category && updateCategoryDto.category !== existingCategory.category) {
       // Tùy chọn: Nếu sửa tên mà không truyền mã, có thể tự cập nhật mã theo tên mới
-      // updateCategoryDto.categoryCode = await this.generateUniqueCode(updateCategoryDto.category, id);
+      updateCategoryDto.categoryCode = await generateUniqueSlug(this.categoryRepository, updateCategoryDto.category, 'categoryCode', id, 'category');
     }
 
     Object.assign(existingCategory, updateCategoryDto);
