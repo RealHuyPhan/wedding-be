@@ -46,15 +46,19 @@ export class BlogService {
   }
 
   async findAll(pageOptionsDto: PageOptionsDto) {
-    const { page = 0, size = 10, search } = pageOptionsDto;
+    const { page = 0, size = 10, search, topicId } = pageOptionsDto;
     const queryBuilder = this.blogRepository.createQueryBuilder('blog')
       .leftJoinAndSelect('blog.topics', 'topic');
 
     if (search) {
-      queryBuilder.where(
+      queryBuilder.andWhere(
         '(blog.title ILIKE :search OR blog.slug ILIKE :search)',
         { search: `%${search}%` }
       );
+    }
+
+    if (topicId) {
+      queryBuilder.innerJoin('blog.topics', 'filterTopic', 'filterTopic.id = :topicId', { topicId });
     }
     // Sắp xếp bài viết mới nhất lên trước
     queryBuilder.orderBy('blog.createdAt', 'DESC');

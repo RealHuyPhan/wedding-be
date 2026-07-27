@@ -20,4 +20,8 @@ export class PageOptionsDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  topicId?: string;
 }
