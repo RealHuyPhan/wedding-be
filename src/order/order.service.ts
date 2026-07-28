@@ -31,7 +31,7 @@ export class OrderService {
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingMethodName, shippingAmount } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingMethodName, shippingMethodToken, shippingAmount } = createOrderDto;
 
     if (paymentMethod === PaymentMethod.VIA_SOCIAL_MEDIA) {
       throw new BadRequestException('This payment method is not available for online checkout.');
@@ -129,6 +129,7 @@ export class OrderService {
         shippingPostcode,
         shippingUnit,
         shippingMethodName: shippingMethodName || '',
+        shippingMethodToken: shippingMethodToken || '',
         paymentMethod,
         subTotal,
         shippingFee,
@@ -456,5 +457,60 @@ export class OrderService {
 
     await this.orderRepository.remove(order);
     return { statusCode: HttpStatus.OK, message: 'Order deleted successfully' };
+  }
+
+  async purchaseLabel(id: string, purchaseLabelDto: import('./dto/purchase-label.dto').PurchaseLabelDto) {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    
+    if (order.shippingTrackingNumber) {
+      throw new BadRequestException('Shipping label has already been purchased for this order');
+    }
+
+    if (!order.shippingMethodToken) {
+      throw new BadRequestException('Order does not have a shipping method token selected by the customer');
+    }
+
+    const addressTo = {
+      name: order.shippingName,
+      street1: order.shippingAddress,
+      city: order.shippingCity,
+      state: order.shippingProvince,
+      zip: order.shippingPostcode,
+      country: order.shippingCountry,
+    };
+
+    const parcel = {
+      length: purchaseLabelDto.length.toString(),
+      width: purchaseLabelDto.width.toString(),
+      height: purchaseLabelDto.height.toString(),
+      weight: purchaseLabelDto.weight.toString(),
+      distance_unit: 'cm',
+      mass_unit: 'kg',
+    };
+
+    try {
+      const transaction = await this.shippoService.purchaseLabel(addressTo, parcel, order.shippingMethodToken);
+      
+      // Save tracking info to database
+      order.shippingTrackingNumber = transaction.tracking_number as string;
+      order.shippingLabelUrl = transaction.label_url as string;
+      order.status = OrderStatus.SHIPPING; // Auto update status
+      await this.orderRepository.save(order);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Shipping label purchased successfully',
+        data: {
+          trackingNumber: order.shippingTrackingNumber,
+          labelUrl: order.shippingLabelUrl
+        }
+      };
+    } catch (error: any) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      throw new BadRequestException(error.message || 'Failed to purchase shipping label');
+    }
   }
 }

@@ -55,7 +55,7 @@ export class ShippingController {
       country: getRatesDto.country,
     };
 
-    const rates = await this.shippoService.getRates(addressTo, totalWeightKg);
+    const rates = await this.shippoService.getRates(addressTo, totalWeightKg, totalSets);
     return {
       statusCode: 200,
       message: 'Rates fetched successfully',

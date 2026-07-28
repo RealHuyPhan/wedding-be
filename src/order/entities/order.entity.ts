@@ -63,6 +63,15 @@ export class Order {
     @Column({ nullable: true })
     shippingMethodName: string;
 
+    @Column({ nullable: true })
+    shippingMethodToken: string;
+
+    @Column({ nullable: true })
+    shippingTrackingNumber: string;
+
+    @Column({ nullable: true })
+    shippingLabelUrl: string;
+
     // 3. THÔNG TIN THANH TOÁN & TRẠNG THÁI
     @Column({ type: 'decimal', precision: 12, scale: 2 })
     subTotal: number;
