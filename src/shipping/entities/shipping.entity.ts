@@ -17,8 +17,7 @@ export class ShippingDestination {
   @Column({ nullable: true })
   provinceCode: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  shippingFee: number;
+
 
   @CreateDateColumn()
   createdAt: Date;

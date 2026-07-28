@@ -15,6 +15,7 @@ import { User } from '../user/entities/user.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
 import { PaymentService } from '../payment/payment.service';
 import { EmailService } from 'src/email/email.service';
+import { ShippoService } from '../shipping/shippo.service';
 
 @Injectable()
 export class OrderService {
@@ -26,10 +27,11 @@ export class OrderService {
     private dataSource: DataSource,
     private paymentService: PaymentService,
     private emailService: EmailService,
+    private shippoService: ShippoService,
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingMethodName, shippingAmount } = createOrderDto;
 
     if (paymentMethod === PaymentMethod.VIA_SOCIAL_MEDIA) {
       throw new BadRequestException('This payment method is not available for online checkout.');
@@ -73,11 +75,12 @@ export class OrderService {
       }
 
       // 2.5 Lấy thông tin Shipping Destination
-      const whereCondition: FindOptionsWhere<ShippingDestination> = { country: shippingCountry };
+      const whereCondition: FindOptionsWhere<ShippingDestination>[] = [];
       if (shippingProvince) {
-        whereCondition.province = shippingProvince;
+        whereCondition.push({ country: shippingCountry, province: shippingProvince });
+        whereCondition.push({ country: shippingCountry, provinceCode: shippingProvince });
       } else {
-        whereCondition.province = IsNull();
+        whereCondition.push({ country: shippingCountry, province: IsNull() });
       }
 
       const shippingDest = await queryRunner.manager.findOne(ShippingDestination, {
@@ -88,8 +91,8 @@ export class OrderService {
         throw new BadRequestException('Invalid or unsupported shipping destination');
       }
 
-      // Đưa phí ship về dạng Cent để cộng cho an toàn
-      const shippingFeeCents = Math.round(Number(shippingDest.shippingFee || 0) * 100);
+      // Sử dụng shippingAmount trực tiếp từ Frontend (đã được tính toán từ Shippo)
+      const shippingFeeCents = Math.round(Number(shippingAmount || 0) * 100);
 
       // Tính Service Fee theo vùng
       let serviceFeeCents = 0;
@@ -125,6 +128,7 @@ export class OrderService {
         shippingCity,
         shippingPostcode,
         shippingUnit,
+        shippingMethodName: shippingMethodName || '',
         paymentMethod,
         subTotal,
         shippingFee,
@@ -223,7 +227,7 @@ export class OrderService {
     if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
       order.status = OrderStatus.PROCESSING;
       await this.orderRepository.save(order);
-      
+
       const orderWithItems = await this.orderRepository.findOne({
         where: { id: order.id },
         relations: { user: true, items: { product: true } }
@@ -234,9 +238,9 @@ export class OrderService {
       }
     }
 
-    return { 
-      statusCode: HttpStatus.OK, 
-      message: 'Session verified', 
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Session verified',
       isPaid: verification.isPaid,
       orderId: order.id,
       status: order.status
