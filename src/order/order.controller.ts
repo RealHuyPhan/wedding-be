@@ -10,7 +10,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { PageOptionsDto } from '../common/dto/page-options.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateOrderShippingDto } from './dto/update-order-shipping.dto';
-import { PurchaseLabelDto } from './dto/purchase-label.dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -77,14 +76,6 @@ export class OrderController {
   @Patch('admin/:id')
   updateByAdmin(@Param('id') id: string, @Body() updateOrderAdminDto: UpdateOrderAdminDto) {
     return this.orderService.updateByAdmin(id, updateOrderAdminDto);
-  }
-
-  @ApiOperation({ summary: '[Admin] Purchase Shipping Label', description: 'Purchase a Shippo label with custom dimensions' })
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
-  @Post('admin/:id/purchase-label')
-  purchaseLabel(@Param('id') id: string, @Body() purchaseLabelDto: PurchaseLabelDto) {
-    return this.orderService.purchaseLabel(id, purchaseLabelDto);
   }
 
   @ApiOperation({ summary: 'Update order shipping info', description: 'Update order shipping info by user if status is processing' })
