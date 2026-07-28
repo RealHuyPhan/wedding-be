@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateShippingDto {
   @IsString()
@@ -17,7 +17,9 @@ export class CreateShippingDto {
   @IsOptional()
   provinceCode?: string;
 
-
+  @IsNumber()
+  @IsNotEmpty()
+  shippingFee: number;
 
 
 }

@@ -12,14 +12,12 @@ import { User } from '../user/entities/user.entity';
 import { ShippingDestination } from '../shipping/entities/shipping.entity';
 import { PaymentModule } from '../payment/payment.module';
 import { EmailModule } from 'src/email/email.module';
-import { ShippingModule } from '../shipping/shipping.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, Cart, CartItem, Product, User, ShippingDestination]),
     PaymentModule,
-    EmailModule,
-    ShippingModule
+    EmailModule
   ],
   controllers: [OrderController],
   providers: [OrderService],
