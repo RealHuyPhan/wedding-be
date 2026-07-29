@@ -70,6 +70,15 @@ export class Order {
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     serviceFee: number;
 
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+    taxFee: number;
+
+    @Column({ type: 'varchar', nullable: true })
+    taxName: string | null;
+
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+    customsFee: number;
+
     @Column({ type: 'decimal', precision: 12, scale: 2 })
     totalAmount: number;
 

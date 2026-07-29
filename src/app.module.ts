@@ -11,7 +11,8 @@ import { CategoryModule } from './category/category.module';
 import { ProductModule } from './product/product.module';
 import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
-import { ShippingModule } from './shipping/shipping.module';
+import { CountryModule } from './country/country.module';
+import { StateModule } from './state/state.module';
 import { PaymentModule } from './payment/payment.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { BlogModule } from './blog/blog.module';
@@ -57,7 +58,8 @@ import { TopicModule } from './topic/topic.module';
     ProductModule,
     CartModule,
     OrderModule,
-    ShippingModule,
+    CountryModule,
+    StateModule,
     PaymentModule,
     FavoriteModule,
     BlogModule,

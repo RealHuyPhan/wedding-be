@@ -28,7 +28,11 @@ export class CreateUserDto {
 
     @IsOptional()
     @IsString()
-    shippingDestinationId?: string;
+    shippingCountryCode?: string;
+
+    @IsOptional()
+    @IsString()
+    shippingStateCode?: string;
 
     @IsOptional()
     @IsString()

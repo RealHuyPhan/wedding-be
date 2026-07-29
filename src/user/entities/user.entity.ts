@@ -25,7 +25,10 @@ export class User {
     address: string;
 
     @Column({ nullable: true })
-    shippingDestinationId: string;
+    shippingCountryCode: string;
+
+    @Column({ nullable: true })
+    shippingStateCode: string;
 
     @Column({ nullable: true })
     city: string;

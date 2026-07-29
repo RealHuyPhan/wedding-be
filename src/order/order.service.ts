@@ -7,12 +7,13 @@ import { UpdateOrderAdminDto } from './dto/update-order-admin.dto';
 import { UpdateOrderShippingDto } from './dto/update-order-shipping.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order, OrderStatus, PaymentMethod } from './entities/order.entity';
-import { Repository, DataSource, IsNull, FindOptionsWhere } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { OrderItem } from './entities/order-item.entity';
 import { Cart } from '../cart/entities/cart.entity';
 import { Product } from '../product/entities/product.entity';
 import { User } from '../user/entities/user.entity';
-import { ShippingDestination } from '../shipping/entities/shipping.entity';
+import { Country } from '../country/entities/country.entity';
+import { State } from '../state/entities/state.entity';
 import { PaymentService } from '../payment/payment.service';
 import { EmailService } from 'src/email/email.service';
 
@@ -72,28 +73,31 @@ export class OrderService {
         totalCents += priceInCents * item.quantity;
       }
 
-      // 2.5 Lấy thông tin Shipping Destination
-      const whereCondition: FindOptionsWhere<ShippingDestination> = { country: shippingCountry };
-      if (shippingProvince) {
-        whereCondition.province = shippingProvince;
-      } else {
-        whereCondition.province = IsNull();
-      }
-
-      const shippingDest = await queryRunner.manager.findOne(ShippingDestination, {
-        where: whereCondition
+      // 2.5 Validate shipping destination against Country & State tables
+      const country = await queryRunner.manager.findOne(Country, {
+        where: { code: shippingCountry }
       });
 
-      if (!shippingDest) {
-        throw new BadRequestException('Invalid or unsupported shipping destination');
+      if (!country) {
+        throw new BadRequestException('Invalid or unsupported shipping country');
       }
 
-      // Đưa phí ship về dạng Cent để cộng cho an toàn
-      const shippingFeeCents = Math.round(Number(shippingDest.shippingFee || 0) * 100);
+      if (shippingProvince) {
+        const state = await queryRunner.manager.findOne(State, {
+          where: { code: shippingProvince, countryCode: shippingCountry }
+        });
+
+        if (!state) {
+          throw new BadRequestException('Invalid or unsupported shipping state/province');
+        }
+      }
+
+      // Shipping fee (tạm thời = 0, sẽ tích hợp API vận chuyển sau)
+      const shippingFeeCents = 0;
 
       // Tính Service Fee theo vùng
       let serviceFeeCents = 0;
-      const prov = shippingDest.province?.toLowerCase() || '';
+      const prov = shippingProvince?.toLowerCase() || '';
 
       const NO_FEE_REGIONS = ['qc', 'quebec', 'ct', 'connecticut', 'me', 'maine', 'ma', 'massachusetts', 'pr', 'puerto rico'];
       const TWO_PERCENT_REGIONS = ['co', 'colorado', 'ok', 'oklahoma'];
@@ -106,12 +110,24 @@ export class OrderService {
         serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.024);
       }
 
-      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents;
+      const { taxFeeCents, taxName } = this.calculateCanadaTax(shippingCountry, prov, totalCents, shippingFeeCents, serviceFeeCents);
+
+
+      // Tính Customs Fee (2% của tiền hàng) nếu ship đi Mỹ
+      let customsFeeCents = 0;
+      const isUS = shippingCountry && (shippingCountry.toLowerCase() === 'us' || shippingCountry.toLowerCase() === 'usa' || shippingCountry.toLowerCase() === 'united states');
+      if (isUS) {
+        customsFeeCents = Math.round(totalCents * 0.02);
+      }
+
+      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents + taxFeeCents + customsFeeCents;
 
       // Trả lại định dạng CAD chuẩn
       const subTotal = totalCents / 100;
       const shippingFee = shippingFeeCents / 100;
       const serviceFee = serviceFeeCents / 100;
+      const taxFee = taxFeeCents / 100;
+      const customsFee = customsFeeCents / 100;
       const totalAmount = totalAmountCents / 100;
 
       // 3. Tạo Order
@@ -129,6 +145,9 @@ export class OrderService {
         subTotal,
         shippingFee,
         serviceFee,
+        taxFee,
+        taxName,
+        customsFee,
         totalAmount,
         status: OrderStatus.PENDING_PAYMENT,
       });
@@ -359,13 +378,25 @@ export class OrderService {
         serviceFeeCents = Math.round((totalCents + shippingFeeCents) * 0.024);
       }
 
-      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents;
+      const { taxFeeCents, taxName } = this.calculateCanadaTax(shippingInfo.shippingCountry, prov, totalCents, shippingFeeCents, serviceFeeCents);
+
+      // Tính Customs Fee (2% của tiền hàng) nếu ship đi Mỹ
+      let customsFeeCents = 0;
+      const isUS = shippingInfo.shippingCountry && (shippingInfo.shippingCountry.toLowerCase() === 'us' || shippingInfo.shippingCountry.toLowerCase() === 'usa' || shippingInfo.shippingCountry.toLowerCase() === 'united states');
+      if (isUS) {
+        customsFeeCents = Math.round(totalCents * 0.02);
+      }
+
+      const totalAmountCents = totalCents + shippingFeeCents + serviceFeeCents + taxFeeCents + customsFeeCents;
 
       const newOrder = queryRunner.manager.create(Order, {
         ...shippingInfo,
         subTotal: totalCents / 100,
         shippingFee: shippingFeeCents / 100,
         serviceFee: serviceFeeCents / 100,
+        taxFee: taxFeeCents / 100,
+        taxName: taxName,
+        customsFee: customsFeeCents / 100,
         totalAmount: totalAmountCents / 100,
         status: status,
         ...(user ? { user } : {}),
@@ -452,5 +483,27 @@ export class OrderService {
 
     await this.orderRepository.remove(order);
     return { statusCode: HttpStatus.OK, message: 'Order deleted successfully' };
+  }
+
+  private calculateCanadaTax(shippingCountry: string, province: string, totalCents: number, shippingFeeCents: number, serviceFeeCents: number) {
+    let taxFeeCents = 0;
+    let taxName: string | null = null;
+    
+    const isCanada = shippingCountry && (shippingCountry.toLowerCase() === 'canada' || shippingCountry.toLowerCase() === 'ca' || shippingCountry.toLowerCase() === 'can');
+    if (isCanada) {
+      let taxRate = 0;
+      const prov = province.toLowerCase();
+      if (['on', 'ontario'].includes(prov)) { taxRate = 0.13; taxName = 'HST (13%)'; }
+      else if (['nb', 'new brunswick', 'nl', 'newfoundland and labrador', 'ns', 'nova scotia', 'pe', 'prince edward island'].includes(prov)) { taxRate = 0.15; taxName = 'HST (15%)'; }
+      else if (['bc', 'british columbia'].includes(prov)) { taxRate = 0.12; taxName = 'GST + PST (12%)'; }
+      else if (['mb', 'manitoba'].includes(prov)) { taxRate = 0.12; taxName = 'GST + RST (12%)'; }
+      else if (['qc', 'quebec'].includes(prov)) { taxRate = 0.14975; taxName = 'GST + QST (14.975%)'; }
+      else if (['sk', 'saskatchewan'].includes(prov)) { taxRate = 0.11; taxName = 'GST + PST (11%)'; }
+      else if (['ab', 'alberta', 'nt', 'northwest territories', 'nu', 'nunavut', 'yt', 'yukon'].includes(prov)) { taxRate = 0.05; taxName = 'GST (5%)'; }
+      
+      taxFeeCents = Math.round((totalCents + shippingFeeCents + serviceFeeCents) * taxRate);
+    }
+
+    return { taxFeeCents, taxName };
   }
 }

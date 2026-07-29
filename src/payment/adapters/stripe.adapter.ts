@@ -59,6 +59,34 @@ export class StripeAdapter implements IPaymentGateway {
       });
     }
 
+    // Thêm phí thuế (Tax Fee) nếu có
+    if (Number(order.taxFee) > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'cad',
+          product_data: {
+            name: order.taxName || 'Tax',
+          },
+          unit_amount: Math.round(Number(order.taxFee) * 100),
+        },
+        quantity: 1,
+      });
+    }
+
+    // Thêm phí hải quan (Customs Fee) nếu có
+    if (Number(order.customsFee) > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'cad',
+          product_data: {
+            name: 'Customs Fee',
+          },
+          unit_amount: Math.round(Number(order.customsFee) * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await this.stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
