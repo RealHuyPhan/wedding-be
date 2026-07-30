@@ -18,6 +18,7 @@ import { FavoriteModule } from './favorite/favorite.module';
 import { BlogModule } from './blog/blog.module';
 import { TopicModule } from './topic/topic.module';
 import { ShippingModule } from './shipping/shipping.module';
+import { SettingModule } from './setting/setting.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ShippingModule } from './shipping/shipping.module';
     BlogModule,
     TopicModule,
     ShippingModule,
+    SettingModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SettingService } from '../setting/setting.service';
 
 @Injectable()
 export class CanadaPostService {
@@ -7,7 +8,10 @@ export class CanadaPostService {
   private accessToken: string | null = null;
   private tokenExpiresAt: number = 0;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private settingService: SettingService,
+  ) {}
 
   private async getAccessToken(): Promise<string> {
     if (this.accessToken && Date.now() < this.tokenExpiresAt) {
@@ -66,7 +70,11 @@ export class CanadaPostService {
   ): Promise<Array<{ serviceName: string, serviceCode: string, price: number, transitDays?: number }> | null> {
     try {
       const token = await this.getAccessToken();
-      const originZip = this.configService.get<string>('CANADA_POST_ORIGIN_POSTAL_CODE') || 'K2E5V2';
+      
+      let originZip = await this.settingService.getValue('CANADA_POST_ORIGIN_POSTAL_CODE');
+      if (!originZip) {
+        originZip = this.configService.get<string>('CANADA_POST_ORIGIN_POSTAL_CODE') || 'K2E5V2';
+      }
       const customerNumber = this.configService.get<string>('CANADA_POST_CUSTOMER_NUMBER');
 
       const url = 'https://api.canadapost-postescanada.ca/prod/devportal-portaildesdeveloppeurs/rating/v1/prices';
