@@ -108,42 +108,44 @@ export class OrderService {
         }
       }
 
-      // 2.6 Lấy phí ship: ưu tiên dùng giá FE đã gửi, fallback mới gọi Canada Post
+      // 2.6 Lấy phí ship: BE luôn làm chủ giá (gọi Canada Post trước)
+      // FE gửi shippingFeeCAD chỉ được dùng làm fallback khi Canada Post lỗi/timeout
+      // → Ngăn chặn Price Tampering: hacker sửa giá FE cũng không ảnh hưởng
       let shippingFeeCents = 2000; // Mặc định 20 CAD dự phòng
 
-      if (shippingFeeCAD !== undefined && shippingFeeCAD > 0) {
-        // FE đã gửi đúng giá user chọn → dùng trực tiếp, không gọi lại API
-        shippingFeeCents = Math.round(shippingFeeCAD * 100);
-      } else {
-        // Fallback: gọi Canada Post với timeout 8s
-        try {
-          type RateOption = {
-            serviceCode: string;
-            serviceName: string;
-            price: number;
-            transitDays?: number;
-            expectedDeliveryDate?: string;
-            guaranteedDelivery?: boolean;
-            includedOptions?: string[];
-          };
+      type RateOption = {
+        serviceCode: string;
+        serviceName: string;
+        price: number;
+        transitDays?: number;
+        expectedDeliveryDate?: string;
+        guaranteedDelivery?: boolean;
+        includedOptions?: string[];
+      };
 
-          const timeoutPromise = new Promise<{ rates: RateOption[] }>((_, reject) =>
-            setTimeout(() => reject(new Error('Shipping rate fetch timeout')), 4000)
-          );
+      try {
+        const timeoutPromise = new Promise<{ rates: RateOption[] }>((_, reject) =>
+          setTimeout(() => reject(new Error('Shipping rate fetch timeout')), 5000)
+        );
 
-          const ratesResult = await Promise.race([
-            this.shippingService.getRates(normCountryCode, shippingPostcode, totalCards),
-            timeoutPromise,
-          ]);
+        const ratesResult = await Promise.race([
+          this.shippingService.getRates(normCountryCode, shippingPostcode, totalCards),
+          timeoutPromise,
+        ]);
 
-          if (ratesResult && ratesResult.rates && ratesResult.rates.length > 0) {
-            const ratesList = ratesResult.rates as RateOption[];
-            const selectedRate = ratesList.find((r) => r.serviceCode === shippingServiceCode) || ratesList[0];
-            shippingFeeCents = Math.round(Number(selectedRate.price || 20) * 100);
-          }
-        } catch (err) {
-          console.error('Fast fallback for live shipping fee during checkout:', err);
-          shippingFeeCents = 2000; // Fallback 20 CAD
+        if (ratesResult && ratesResult.rates && ratesResult.rates.length > 0) {
+          const ratesList = ratesResult.rates as RateOption[];
+          // Ưu tiên đúng service code user chọn, fallback về option đầu tiên
+          const selectedRate = ratesList.find((r) => r.serviceCode === shippingServiceCode) || ratesList[0];
+          shippingFeeCents = Math.round(Number(selectedRate.price || 20) * 100);
+        }
+      } catch (err) {
+        // Canada Post timeout/lỗi → dùng giá FE gửi lên làm fallback
+        console.error('Canada Post unavailable during checkout, falling back to client-provided fee:', err);
+        if (shippingFeeCAD !== undefined && shippingFeeCAD > 0) {
+          shippingFeeCents = Math.max(Math.round(shippingFeeCAD * 100), 2000);
+        } else {
+          shippingFeeCents = 2000; // Fallback cuối: 20 CAD
         }
       }
 
@@ -218,42 +220,42 @@ export class OrderService {
 
       await queryRunner.manager.save(orderItems);
 
-      // 5. Xoá sạch giỏ hàng ngay lập tức để tránh clone order nếu khách bấm Back
-      if (cart.items && cart.items.length > 0) {
-        await queryRunner.manager.remove(cart.items);
-      }
-      // Commit transaction
-      await queryRunner.commitTransaction();
-
-    } catch (err) {
-      console.error('TRANSACTION ERROR:', err);
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
-
-    // 6. Tạo Stripe Checkout Session (Sau khi transaction hoàn tất)
-    try {
+      // 5. Tạo Stripe Checkout Session TRONG transaction
+      // Nếu Stripe lỗi → catch bên dưới sẽ rollback toàn bộ → giỏ hàng được giữ nguyên
       const paymentUrl = await this.paymentService.createPaymentSession(
         savedOrder,
         orderItems,
       );
 
-      // Save paymentUrl to the database for future retrieval (e.g., "Continue Payment")
       savedOrder.paymentUrl = paymentUrl;
-      await this.orderRepository.save(savedOrder);
+      await queryRunner.manager.save(savedOrder);
 
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Order created successfully',
-        data: { orderId: savedOrder.id, paymentUrl },
-      };
-    } catch (stripeErr) {
-      console.error('STRIPE ERROR:', stripeErr);
-      const errorMessage = stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
-      throw new BadRequestException(`Stripe Error: ${errorMessage}`);
+      // 6. Chỉ xóa giỏ hàng SAU KHI Stripe tạo session thành công
+      if (cart.items && cart.items.length > 0) {
+        await queryRunner.manager.remove(cart.items);
+      }
+
+      // Commit transaction
+      await queryRunner.commitTransaction();
+
+    } catch (err) {
+      console.error('TRANSACTION ERROR (including Stripe):', err);
+      await queryRunner.rollbackTransaction();
+      // Phân biệt lỗi Stripe để trả về thông báo rõ ràng hơn
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.toLowerCase().includes('stripe') || errorMessage.toLowerCase().includes('payment')) {
+        throw new BadRequestException(`Payment session error: ${errorMessage}`);
+      }
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Order created successfully',
+      data: { orderId: savedOrder.id, paymentUrl: savedOrder.paymentUrl },
+    };
   }
 
   async findAllByUser(userId: string) {
@@ -289,28 +291,39 @@ export class OrderService {
     }
 
     // Fallback: Update status if paid and currently pending.
-    // This is crucial for Local Development where Stripe Webhooks cannot reach the server,
-    // or if the webhook is delayed. The Webhook will check the status and skip duplicate emails.
-    if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
-      order.status = OrderStatus.PROCESSING;
-      await this.orderRepository.save(order);
+    // Dùng atomic update (update WHERE status = PENDING_PAYMENT) để tránh race condition:
+    // Nếu webhook và client gọi đồng thời, chỉ 1 request thực sự update được (affected = 1)
+    // → Chỉ request đó mới gửi email, tránh gửi email trùng lặp.
+    if (verification.isPaid) {
+      const updateResult = await this.orderRepository.update(
+        { id: order.id, status: OrderStatus.PENDING_PAYMENT },
+        { status: OrderStatus.PROCESSING }
+      );
 
-      const orderWithItems = await this.orderRepository.findOne({
-        where: { id: order.id },
-        relations: { user: true, items: { product: true } }
-      });
-      if (orderWithItems) {
-        void this.emailService.sendOrderConfirmation(orderWithItems);
-        void this.emailService.sendNewOrderAlert(orderWithItems);
+      // Chỉ gửi email nếu chính request này là người thực sự đổi trạng thái
+      if (updateResult.affected && updateResult.affected > 0) {
+        const orderWithItems = await this.orderRepository.findOne({
+          where: { id: order.id },
+          relations: { user: true, items: { product: true } }
+        });
+        if (orderWithItems) {
+          void this.emailService.sendOrderConfirmation(orderWithItems);
+          void this.emailService.sendNewOrderAlert(orderWithItems);
+        }
       }
     }
+
+    // Lấy lại status mới nhất từ DB để trả về cho FE
+    const updatedStatus = (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT)
+      ? OrderStatus.PROCESSING
+      : order.status;
 
     return {
       statusCode: HttpStatus.OK,
       message: 'Session verified',
       isPaid: verification.isPaid,
       orderId: order.id,
-      status: order.status
+      status: updatedStatus
     };
   }
 
@@ -332,17 +345,6 @@ export class OrderService {
     if (currentUser) {
       if (currentUser.role !== 'admin' && order.user.id !== currentUser.id) {
         throw new ForbiddenException('You do not have permission to view this order');
-      }
-    }
-
-    // Backward compatibility: Tự động tạo paymentUrl cho các đơn cũ nếu chưa có
-    if (order.status === OrderStatus.PENDING_PAYMENT && !order.paymentUrl) {
-      try {
-        const paymentUrl = await this.paymentService.createPaymentSession(order, order.items);
-        order.paymentUrl = paymentUrl;
-        await this.orderRepository.save(order);
-      } catch (err) {
-        console.error('Failed to generate paymentUrl for old order:', err);
       }
     }
 
@@ -508,7 +510,17 @@ export class OrderService {
       throw new BadRequestException('You can only update shipping information when the order is processing or pending payment');
     }
 
-    Object.assign(order, updateOrderShippingDto);
+    // [FIX-4: Mass Assignment] Explicit field assignment thay vì Object.assign.
+    // Ngăn hacker inject các field nhạy cảm như `status`, `totalAmount` vào body.
+    if (updateOrderShippingDto.shippingName !== undefined) order.shippingName = updateOrderShippingDto.shippingName;
+    if (updateOrderShippingDto.shippingPhone !== undefined) order.shippingPhone = updateOrderShippingDto.shippingPhone;
+    if (updateOrderShippingDto.shippingAddress !== undefined) order.shippingAddress = updateOrderShippingDto.shippingAddress;
+    if (updateOrderShippingDto.shippingCountry !== undefined) order.shippingCountry = updateOrderShippingDto.shippingCountry;
+    if (updateOrderShippingDto.shippingProvince !== undefined) order.shippingProvince = updateOrderShippingDto.shippingProvince;
+    if (updateOrderShippingDto.shippingCity !== undefined) order.shippingCity = updateOrderShippingDto.shippingCity;
+    if (updateOrderShippingDto.shippingPostcode !== undefined) order.shippingPostcode = updateOrderShippingDto.shippingPostcode;
+    if (updateOrderShippingDto.shippingUnit !== undefined) order.shippingUnit = updateOrderShippingDto.shippingUnit;
+
     await this.orderRepository.save(order);
 
     return { statusCode: HttpStatus.OK, message: 'Shipping information updated successfully' };
@@ -531,6 +543,9 @@ export class OrderService {
       if (order.status !== OrderStatus.PENDING_PAYMENT) {
         throw new BadRequestException('You can only delete orders that are pending payment');
       }
+      order.status = OrderStatus.CANCELLED;
+      await this.orderRepository.save(order);
+      return { statusCode: HttpStatus.OK, message: 'Order cancelled successfully' };
     }
 
     await this.orderRepository.remove(order);

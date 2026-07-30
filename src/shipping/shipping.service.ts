@@ -9,7 +9,7 @@ export class ShippingService {
   constructor(
     private readonly canadaPostService: CanadaPostService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * Tính kích thước Hộp carton và Trọng lượng kiện hàng dựa trên số lượng thiệp
@@ -65,7 +65,14 @@ export class ShippingService {
 
       const packaging = this.calculateParcelPackaging(totalCards);
 
-      const liveRates = await this.canadaPostService.getRates(postcode, countryCode, packaging);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Shipping rate fetch timeout from Canada Post')), 15000)
+      );
+
+      const liveRates = await Promise.race([
+        this.canadaPostService.getRates(postcode, countryCode, packaging),
+        timeoutPromise,
+      ]);
 
       if (liveRates && liveRates.length > 0) {
         const ratesWithMarkup = liveRates.map((rate) => ({
