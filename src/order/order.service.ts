@@ -128,7 +128,7 @@ export class OrderService {
           };
 
           const timeoutPromise = new Promise<{ rates: RateOption[] }>((_, reject) =>
-            setTimeout(() => reject(new Error('Shipping rate fetch timeout')), 8000)
+            setTimeout(() => reject(new Error('Shipping rate fetch timeout')), 4000)
           );
 
           const ratesResult = await Promise.race([
