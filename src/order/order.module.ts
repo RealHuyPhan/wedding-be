@@ -13,12 +13,14 @@ import { Country } from '../country/entities/country.entity';
 import { State } from '../state/entities/state.entity';
 import { PaymentModule } from '../payment/payment.module';
 import { EmailModule } from 'src/email/email.module';
+import { ShippingModule } from '../shipping/shipping.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, Cart, CartItem, Product, User, Country, State]),
     PaymentModule,
-    EmailModule
+    EmailModule,
+    ShippingModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],

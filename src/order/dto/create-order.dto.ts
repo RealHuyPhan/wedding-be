@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PaymentMethod } from '../entities/order.entity';
 
 export class CreateOrderDto {
@@ -36,5 +36,14 @@ export class CreateOrderDto {
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
+
+  @IsString()
+  @IsOptional()
+  shippingServiceCode?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  shippingFeeCAD?: number; // Giá ship thực tế người dùng đã chọn (CAD), nếu có sẽ dùng trực tiếp
 }
 

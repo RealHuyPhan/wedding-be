@@ -17,6 +17,7 @@ import { PaymentModule } from './payment/payment.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { BlogModule } from './blog/blog.module';
 import { TopicModule } from './topic/topic.module';
+import { ShippingModule } from './shipping/shipping.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { TopicModule } from './topic/topic.module';
     FavoriteModule,
     BlogModule,
     TopicModule,
+    ShippingModule,
   ],
   controllers: [AppController],
   providers: [

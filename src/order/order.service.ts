@@ -16,6 +16,7 @@ import { Country } from '../country/entities/country.entity';
 import { State } from '../state/entities/state.entity';
 import { PaymentService } from '../payment/payment.service';
 import { EmailService } from 'src/email/email.service';
+import { ShippingService } from '../shipping/shipping.service';
 
 @Injectable()
 export class OrderService {
@@ -27,10 +28,11 @@ export class OrderService {
     private dataSource: DataSource,
     private paymentService: PaymentService,
     private emailService: EmailService,
+    private shippingService: ShippingService,
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingServiceCode, shippingFeeCAD } = createOrderDto;
 
     if (paymentMethod === PaymentMethod.VIA_SOCIAL_MEDIA) {
       throw new BadRequestException('This payment method is not available for online checkout.');
@@ -60,8 +62,9 @@ export class OrderService {
         throw new BadRequestException('Cart is empty');
       }
 
-      // 2. Tính tổng tiền (Sử dụng đơn vị Cent để tránh lỗi sai số thập phân của Javascript khi tính tiền CAD)
+      // 2. Tính tổng tiền và tổng số lượng thiệp
       let totalCents = 0;
+      let totalCards = 0;
       for (const item of cart.items) {
         const product = item.product;
         if (!product) {
@@ -71,29 +74,78 @@ export class OrderService {
         // Đổi giá thành số nguyên (Cent) bằng cách nhân 100 và làm tròn
         const priceInCents = Math.round(Number(product.price || 0) * 100);
         totalCents += priceInCents * item.quantity;
+        totalCards += item.quantity;
       }
 
       // 2.5 Validate shipping destination against Country & State tables
+      let normCountryCode = (shippingCountry || '').trim().toUpperCase();
+      if (normCountryCode === 'CANADA') normCountryCode = 'CA';
+      if (normCountryCode === 'UNITED STATES' || normCountryCode === 'USA') normCountryCode = 'US';
+
+      const normStateCode = (shippingProvince || '').trim().toUpperCase();
+
       const country = await queryRunner.manager.findOne(Country, {
-        where: { code: shippingCountry }
+        where: [
+          { code: normCountryCode },
+          { code: shippingCountry }
+        ]
       });
 
-      if (!country) {
+      if (!country && normCountryCode !== 'CA' && normCountryCode !== 'US') {
         throw new BadRequestException('Invalid or unsupported shipping country');
       }
 
-      if (shippingProvince) {
+      if (normStateCode) {
         const state = await queryRunner.manager.findOne(State, {
-          where: { code: shippingProvince, countryCode: shippingCountry }
+          where: [
+            { code: normStateCode, countryCode: normCountryCode },
+            { code: normStateCode, countryCode: shippingCountry }
+          ]
         });
 
         if (!state) {
-          throw new BadRequestException('Invalid or unsupported shipping state/province');
+          console.warn(`State/Province ${shippingProvince} not found in DB for country ${shippingCountry}, proceeding with checkout.`);
         }
       }
 
-      // Shipping fee (tạm thời = 0, sẽ tích hợp API vận chuyển sau)
-      const shippingFeeCents = 0;
+      // 2.6 Lấy phí ship: ưu tiên dùng giá FE đã gửi, fallback mới gọi Canada Post
+      let shippingFeeCents = 2000; // Mặc định 20 CAD dự phòng
+
+      if (shippingFeeCAD !== undefined && shippingFeeCAD > 0) {
+        // FE đã gửi đúng giá user chọn → dùng trực tiếp, không gọi lại API
+        shippingFeeCents = Math.round(shippingFeeCAD * 100);
+      } else {
+        // Fallback: gọi Canada Post với timeout 8s
+        try {
+          type RateOption = {
+            serviceCode: string;
+            serviceName: string;
+            price: number;
+            transitDays?: number;
+            expectedDeliveryDate?: string;
+            guaranteedDelivery?: boolean;
+            includedOptions?: string[];
+          };
+
+          const timeoutPromise = new Promise<{ rates: RateOption[] }>((_, reject) =>
+            setTimeout(() => reject(new Error('Shipping rate fetch timeout')), 8000)
+          );
+
+          const ratesResult = await Promise.race([
+            this.shippingService.getRates(normCountryCode, shippingPostcode, totalCards),
+            timeoutPromise,
+          ]);
+
+          if (ratesResult && ratesResult.rates && ratesResult.rates.length > 0) {
+            const ratesList = ratesResult.rates as RateOption[];
+            const selectedRate = ratesList.find((r) => r.serviceCode === shippingServiceCode) || ratesList[0];
+            shippingFeeCents = Math.round(Number(selectedRate.price || 20) * 100);
+          }
+        } catch (err) {
+          console.error('Fast fallback for live shipping fee during checkout:', err);
+          shippingFeeCents = 2000; // Fallback 20 CAD
+        }
+      }
 
       // Tính Service Fee theo vùng
       let serviceFeeCents = 0;
@@ -242,7 +294,7 @@ export class OrderService {
     if (verification.isPaid && order.status === OrderStatus.PENDING_PAYMENT) {
       order.status = OrderStatus.PROCESSING;
       await this.orderRepository.save(order);
-      
+
       const orderWithItems = await this.orderRepository.findOne({
         where: { id: order.id },
         relations: { user: true, items: { product: true } }
@@ -253,9 +305,9 @@ export class OrderService {
       }
     }
 
-    return { 
-      statusCode: HttpStatus.OK, 
-      message: 'Session verified', 
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Session verified',
       isPaid: verification.isPaid,
       orderId: order.id,
       status: order.status
@@ -488,7 +540,7 @@ export class OrderService {
   private calculateCanadaTax(shippingCountry: string, province: string, totalCents: number, shippingFeeCents: number, serviceFeeCents: number) {
     let taxFeeCents = 0;
     let taxName: string | null = null;
-    
+
     const isCanada = shippingCountry && (shippingCountry.toLowerCase() === 'canada' || shippingCountry.toLowerCase() === 'ca' || shippingCountry.toLowerCase() === 'can');
     if (isCanada) {
       let taxRate = 0;
@@ -500,7 +552,7 @@ export class OrderService {
       else if (['qc', 'quebec'].includes(prov)) { taxRate = 0.14975; taxName = 'GST + QST (14.975%)'; }
       else if (['sk', 'saskatchewan'].includes(prov)) { taxRate = 0.11; taxName = 'GST + PST (11%)'; }
       else if (['ab', 'alberta', 'nt', 'northwest territories', 'nu', 'nunavut', 'yt', 'yukon'].includes(prov)) { taxRate = 0.05; taxName = 'GST (5%)'; }
-      
+
       taxFeeCents = Math.round((totalCents + shippingFeeCents + serviceFeeCents) * taxRate);
     }
 
