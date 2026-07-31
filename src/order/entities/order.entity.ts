@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { OrderItem } from './order-item.entity';
+import { WeddingInvitation } from '../../wedding-invitation/entities/wedding-invitation.entity';
 
 export enum OrderStatus {
     PENDING_PAYMENT = 'PENDING_PAYMENT',
@@ -104,7 +105,11 @@ export class Order {
     @OneToMany(() => OrderItem, (orderItem: OrderItem) => orderItem.order, { cascade: true })
     items: OrderItem[];
 
-    // 5. TIMESTAMPS
+    // 5. THÔNG TIN THIỆP CƯỚI (Nội dung)
+    @ManyToOne(() => WeddingInvitation, (invitation) => invitation.orders, { nullable: true, onDelete: 'SET NULL' })
+    weddingInvitation: WeddingInvitation;
+
+    // 6. TIMESTAMPS
     @CreateDateColumn()
     createdAt: Date;
 

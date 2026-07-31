@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { Cart } from "../../cart/entities/cart.entity";
 import { Order } from "../../order/entities/order.entity";
 import { Favorite } from "../../favorite/entities/favorite.entity";
+import { WeddingInvitation } from "../../wedding-invitation/entities/wedding-invitation.entity";
 
 @Entity('users')
 export class User {
@@ -60,6 +61,9 @@ export class User {
 
     @OneToMany(() => Favorite, (favorite) => favorite.user)
     favorites: Favorite[];
+
+    @OneToMany(() => WeddingInvitation, (invitation) => invitation.user)
+    weddingInvitations: WeddingInvitation[];
 
     @BeforeInsert()
     @BeforeUpdate()

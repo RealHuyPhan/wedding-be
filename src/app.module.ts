@@ -19,6 +19,7 @@ import { BlogModule } from './blog/blog.module';
 import { TopicModule } from './topic/topic.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { SettingModule } from './setting/setting.module';
+import { WeddingInvitationModule } from './wedding-invitation/wedding-invitation.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { SettingModule } from './setting/setting.module';
     TopicModule,
     ShippingModule,
     SettingModule,
+    WeddingInvitationModule,
   ],
   controllers: [AppController],
   providers: [

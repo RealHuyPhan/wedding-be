@@ -264,7 +264,8 @@ export class OrderService {
       relations: {
         items: {
           product: true
-        }
+        },
+        weddingInvitation: true
       },
       order: { createdAt: 'DESC' }
     });
@@ -334,7 +335,8 @@ export class OrderService {
         items: {
           product: true
         },
-        user: true
+        user: true,
+        weddingInvitation: true
       }
     });
     if (!order) {
@@ -360,6 +362,7 @@ export class OrderService {
 
     const queryBuilder = this.orderRepository.createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.weddingInvitation', 'weddingInvitation')
       .orderBy('order.createdAt', 'DESC');
 
     // Chú ý: Ở đây ta gọi hàm paginate dùng chung
