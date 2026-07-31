@@ -45,5 +45,9 @@ export class CreateOrderDto {
   @IsOptional()
   @Min(0)
   shippingFeeCAD?: number; // Giá ship thực tế người dùng đã chọn (CAD), nếu có sẽ dùng trực tiếp
+
+  @IsString()
+  @IsOptional()
+  weddingInvitationId?: string;
 }
 

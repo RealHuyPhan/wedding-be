@@ -32,7 +32,7 @@ export class OrderService {
   ) { }
 
   async checkout(userId: string, createOrderDto: CreateOrderDto) {
-    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingServiceCode, shippingFeeCAD } = createOrderDto;
+    const { shippingName, shippingPhone, shippingAddress, shippingCountry, shippingProvince, shippingCity, shippingPostcode, shippingUnit, paymentMethod, shippingServiceCode, shippingFeeCAD, weddingInvitationId } = createOrderDto;
 
     if (paymentMethod === PaymentMethod.VIA_SOCIAL_MEDIA) {
       throw new BadRequestException('This payment method is not available for online checkout.');
@@ -204,6 +204,7 @@ export class OrderService {
         customsFee,
         totalAmount,
         status: OrderStatus.PENDING_PAYMENT,
+        ...(weddingInvitationId ? { weddingInvitation: { id: weddingInvitationId } } : {})
       });
 
       savedOrder = await queryRunner.manager.save(newOrder);
