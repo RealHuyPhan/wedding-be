@@ -1,6 +1,16 @@
 import { ConfigService } from "@nestjs/config";
 import { Order } from "src/order/entities/order.entity";
 
+const escapeHtml = (unsafe: string | null | undefined) => {
+    if (!unsafe) return '';
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+ };
+
 export const getOrderConfirmationFallback = (order: Order, configService: ConfigService) => {
   const { id, shippingName, totalAmount, createdAt } = order;
   const items = [...new Map((order.items ?? []).map(item => [item.id, item])).values()];
@@ -85,7 +95,7 @@ export const getOrderConfirmationFallback = (order: Order, configService: Config
           <tr>
             <td style="padding:24px 40px 8px;">
               <p style="margin:0;font-size:14px;color:#6a5a50;line-height:1.7;">
-                Hi <strong style="color:#5c3325;">${shippingName}</strong>,
+                Hi <strong style="color:#5c3325;">${escapeHtml(shippingName)}</strong>,
               </p>
               <p style="margin:8px 0 0;font-size:14px;color:#6a5a50;line-height:1.7;">
                 We're delighted to confirm your order. Below is a summary of the beautiful items you've chosen:
@@ -122,7 +132,7 @@ export const getOrderConfirmationFallback = (order: Order, configService: Config
                   <tr>
                     <!-- ITEM: tên sản phẩm -->
                     <td style="padding:14px 16px;border-bottom:1px dashed #e8ddd4;color:#4a3728;font-size:13px;">
-                      ${index + 1}. ${item.product?.product || 'Product'}
+                      ${index + 1}. ${escapeHtml(item.product?.product) || 'Product'}
                     </td>
                     <!-- QTY: số lượng -->
                     <td style="padding:14px 16px;border-bottom:1px dashed #e8ddd4;text-align:center;color:#7a6a5a;font-size:13px;">
@@ -162,7 +172,7 @@ export const getOrderConfirmationFallback = (order: Order, configService: Config
                 customer
               </p>
               <p style="margin:0;font-size:26px;color:#5c3325;font-family:Georgia,serif;font-style:italic;">
-                ${shippingName}
+                ${escapeHtml(shippingName)}
               </p>
             </td>
           </tr>
@@ -214,9 +224,9 @@ export const getNewOrderAlertFallback = (order: Order, configService: ConfigServ
         <h2 style="color:#5c0a1a">🛍️ New Order Received!</h2>
         <table style="width:100%;border-collapse:collapse">
           <tr><td style="padding:6px;color:#888">Order ID</td><td>#${id.slice(0, 8).toUpperCase()}</td></tr>
-          <tr><td style="padding:6px;color:#888">Customer</td><td>${shippingName} (${user?.email})</td></tr>
+          <tr><td style="padding:6px;color:#888">Customer</td><td>${escapeHtml(shippingName)} (${escapeHtml(user?.email)})</td></tr>
           <tr><td style="padding:6px;color:#888">Total</td><td><strong>$${Number(totalAmount).toFixed(2)} CAD</strong></td></tr>
-          <tr><td style="padding:6px;color:#888">Address</td><td>${shippingAddress}, ${shippingCountry}</td></tr>
+          <tr><td style="padding:6px;color:#888">Address</td><td>${escapeHtml(shippingAddress)}, ${escapeHtml(shippingCountry)}</td></tr>
         </table>
         <p><a href="${frontendUrl}/admin/orders/${id}" 
               style="background:#5c0a1a;color:white;padding:10px 20px;text-decoration:none;border-radius:4px">
@@ -261,7 +271,7 @@ export const getStatusUpdateFallback = (order: Order, newStatus: string, configS
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333">
       <h2 style="color:#5c0a1a">${message.heading}</h2>
-      <p>Hi <strong>${shippingName}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(shippingName)}</strong>,</p>
       <p>${message.body}</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;background:#f9f5f0;border-radius:4px">
         <tr>
@@ -296,7 +306,7 @@ export const getFraudCancellationFallback = (order: Order, configService: Config
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333">
       <h2 style="color:#5c0a1a">🚫 Order Cancelled & Refunded</h2>
-      <p>Hi <strong>${shippingName}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(shippingName)}</strong>,</p>
       <p>We noticed that you selected "Debit Card" during checkout to waive the service fee, but a Credit Card was used for the actual payment.</p>
       <p>As a result, your order <strong>#${id.slice(0, 8).toUpperCase()}</strong> has been automatically cancelled and a full refund has been issued to your card.</p>
       <p>Please place a new order and ensure that the payment method selected on our website matches the card type used for payment.</p>
