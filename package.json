@@ -36,6 +36,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "fast-xml-parser": "^5.10.1",
+    "handlebars": "^4.7.9",
     "helmet": "^8.3.0",
     "nestjs-resend": "^1.1.0",
     "passport": "^0.7.0",

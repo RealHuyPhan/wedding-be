@@ -20,6 +20,7 @@ import { TopicModule } from './topic/topic.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { SettingModule } from './setting/setting.module';
 import { WeddingInvitationModule } from './wedding-invitation/wedding-invitation.module';
+import { EmailTemplateModule } from './email-template/email-template.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { WeddingInvitationModule } from './wedding-invitation/wedding-invitation
     ShippingModule,
     SettingModule,
     WeddingInvitationModule,
+    EmailTemplateModule,
   ],
   controllers: [AppController],
   providers: [
