@@ -55,7 +55,7 @@ export class User {
     @OneToOne(() => Cart, (cart) => cart.user)
     cart: Cart;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+     
     @OneToMany(() => Order, (order: Order) => order.user)
     orders: Order[];
 

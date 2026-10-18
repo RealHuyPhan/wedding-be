@@ -21,6 +21,10 @@ import { ShippingModule } from './shipping/shipping.module';
 import { SettingModule } from './setting/setting.module';
 import { WeddingInvitationModule } from './wedding-invitation/wedding-invitation.module';
 import { EmailTemplateModule } from './email-template/email-template.module';
+import { DigitalCategoryModule } from './digital-category/digital-category.module';
+import { DigitalProductModule } from './digital-product/digital-product.module';
+import { DigitalTemplateModule } from './digital-template/digital-template.module';
+import { PaidInvitationModule } from './paid-invitation/paid-invitation.module';
 
 @Module({
   imports: [
@@ -72,6 +76,10 @@ import { EmailTemplateModule } from './email-template/email-template.module';
     SettingModule,
     WeddingInvitationModule,
     EmailTemplateModule,
+    DigitalCategoryModule,
+    DigitalProductModule,
+    DigitalTemplateModule,
+    PaidInvitationModule,
   ],
   controllers: [AppController],
   providers: [

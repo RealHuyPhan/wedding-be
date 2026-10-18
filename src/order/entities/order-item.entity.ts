@@ -19,7 +19,7 @@ export class OrderItem {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+   
   @ManyToOne(() => Order, (order: Order) => order.items, { onDelete: 'CASCADE' })
   order: Order;
 

@@ -53,12 +53,12 @@ export class CreateProductDto {
     printingTechnique?: string;
 
     @IsString()
-    @IsOptional()
-    paperStock?: string;
+    @IsNotEmpty({ message: 'Paper stock is required' })
+    paperStock: string;
 
     @IsString()
-    @IsOptional()
-    dimensions?: string;
+    @IsNotEmpty({ message: 'Dimensions are required' })
+    dimensions: string;
 
     @IsOptional()
     @Transform(({ value }: { value: string | boolean | undefined }) => value === 'true' || value === true)

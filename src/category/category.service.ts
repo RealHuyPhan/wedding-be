@@ -61,7 +61,11 @@ export class CategoryService {
 
 
   async findOne(id: string) {
-    const category = await this.categoryRepository.findOne({ where: { id } });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const category = isUuid
+      ? await this.categoryRepository.findOne({ where: { id } })
+      : await this.categoryRepository.findOne({ where: { categoryCode: id } });
+
     if (!category) {
       throw new NotFoundException("Category not found");
     }

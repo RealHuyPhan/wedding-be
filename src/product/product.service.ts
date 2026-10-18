@@ -83,7 +83,12 @@ export class ProductService {
     }
 
     if (categoryId) {
-      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
+      if (isUuid) {
+        queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+      } else {
+        queryBuilder.andWhere('(category.categoryCode = :categoryId OR category.category ILIKE :categoryId)', { categoryId });
+      }
     }
 
     const paginatedResult = await paginate(queryBuilder, page, size);
@@ -103,10 +108,17 @@ export class ProductService {
   }
 
   async findOne(id: string) {
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: { categories: true }
-    })
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const query = this.productRepository.createQueryBuilder('product')
+      .leftJoinAndSelect('product.categories', 'category');
+
+    if (isUuid) {
+      query.where('product.id = :id', { id });
+    } else {
+      query.where('product.productCode = :id', { id });
+    }
+
+    const product = await query.getOne();
     if (!product) {
       throw new NotFoundException("Product not found")
     }

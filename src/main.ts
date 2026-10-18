@@ -11,8 +11,28 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(cookieParser());
 
-  // Bảo mật Headers: Chặn XSS, Clickjacking, và các tấn công phổ biến
-  app.use(helmet());
+  // CORS & Security Headers
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  // Bảo mật Headers: Cho phép Frontend nhúng iframe xem preview HTML và cho phép chạy script/audio mẫu thiệp
+  app.use(
+    helmet({
+      frameguard: false, // Bỏ X-Frame-Options: SAMEORIGIN để frontend nhúng được iframe preview
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:', 'http:'],
+          fontSrc: ["'self'", 'https:', 'data:', 'http:'],
+          imgSrc: ["'self'", 'data:', 'https:', 'http:'],
+          mediaSrc: ["'self'", 'https:', 'http:', 'data:', 'blob:'],
+          frameAncestors: ["'self'", frontendUrl, 'http://localhost:3000'],
+        },
+      },
+    }),
+  );
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
@@ -32,8 +52,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // CORS: Lấy từ biến môi trường để linh hoạt khi deploy
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // CORS: Sử dụng frontendUrl đã khai báo
   app.enableCors({
     origin: frontendUrl,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',

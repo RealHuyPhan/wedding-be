@@ -15,7 +15,7 @@ export class State {
   @Column()
   countryCode: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+   
   @ManyToOne(() => Country, (country: Country) => country.states, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'countryCode', referencedColumnName: 'code' })
   country: Country;
