@@ -1,4 +1,5 @@
 import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateDigitalTemplateDto {
   @IsNotEmpty()
@@ -37,6 +38,7 @@ export class CreateDigitalTemplateDto {
   config?: Record<string, unknown>;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true || (value === 'false' ? false : value))
   @IsBoolean()
   isActive?: boolean;
 }
